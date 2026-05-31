@@ -12,7 +12,5 @@ prefix; the suite's own (work-in-progress) skills live in `../wip/`.
 | `karpathy-guidelines` — LLM coding guardrails (from Andrej Karpathy's observations) | [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills) | MIT |
 
 Each directory carries its own `LICENSE` (so the notice travels when a skill is installed on its own).
-`improve-codebase-architecture` references `grill-with-docs`'s `CONTEXT-FORMAT.md` / `ADR-FORMAT.md`
-(as upstream ships it), so install those two together. Full attribution, copyright notices, sync
-provenance, and the MIT license text are consolidated in **[NOTICES.md](./NOTICES.md)** — keep both
-accurate when adding or updating a vendored skill.
+Full attribution, copyright notices, sync provenance, and the MIT license text are consolidated in
+**[NOTICES.md](./NOTICES.md)** — keep both accurate when adding or updating a vendored skill.

@@ -42,7 +42,5 @@ These are vendored from external repos ([mattpocock/skills](https://github.com/m
 [multica-ai/andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)), both MIT.
 Full attribution, copyright notices, and license text are in
 [skills/third-party/NOTICES.md](./skills/third-party/NOTICES.md); see also
-[skills/third-party/README.md](./skills/third-party/README.md). Most skill directories are standalone
-(their own `SKILL.md`) and install individually — the exception is `improve-codebase-architecture`,
-which shares two format files with `grill-with-docs` (as upstream ships it), so install those two
-together.
+[skills/third-party/README.md](./skills/third-party/README.md). Each skill directory is standalone
+(its own `SKILL.md`) and can also be installed individually.

@@ -22,3 +22,6 @@ SOFTWARE.
 
 ---
 Vendored from https://github.com/mattpocock/skills (skills/engineering/improve-codebase-architecture).
+
+Packaging note: this copy includes local copies of the upstream shared CONTEXT-FORMAT.md and
+ADR-FORMAT.md files, and links to them from SKILL.md, so the skill remains individually installable.

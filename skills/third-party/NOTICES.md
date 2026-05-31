@@ -25,10 +25,10 @@ Last synced from upstream on **2026-05-31 12:06:30 EEST (+0300)**:
 - `mattpocock/skills` @ `e3b90b5` — `grill-me`, `grill-with-docs`, `improve-codebase-architecture`
 - `multica-ai/andrej-karpathy-skills` @ `2c60614` — `karpathy-guidelines`
 
-Notes: `improve-codebase-architecture` references `../grill-with-docs/CONTEXT-FORMAT.md` and
-`../grill-with-docs/ADR-FORMAT.md` (upstream shares those two files across the skills), so keep both
-skills together. The `agents/openai.yaml` adapter in each skill is a local install artifact, not
-upstream content.
+Notes: upstream shares the `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` files used by
+`improve-codebase-architecture` with `grill-with-docs`; this package copies them into
+`improve-codebase-architecture` too, so each skill remains individually installable. The
+`agents/openai.yaml` adapter in each skill is a local install artifact, not upstream content.
 
 ## Copyright notices
 

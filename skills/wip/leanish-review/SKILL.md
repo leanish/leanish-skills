@@ -60,7 +60,7 @@ Keep it only if all of these hold:
 
 7. Apply a high confidence threshold.
 - Default to reporting only high-confidence issues.
-- If the user explicitly asks for delegated or parallel review, use lightweight subagents such as `gpt-5.4-mini` for bounded screening or confidence checks, then do the final filtering and synthesis in the main session.
+- If the user explicitly asks for delegated or parallel review, use a lightweight screening subagent for bounded confidence checks, then do the final filtering and synthesis in the main session.
 - Do not surface issues that remain speculative after a second pass.
 
 8. Handle existing PR comments and threads.
