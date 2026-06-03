@@ -1,6 +1,0 @@
-interface:
-  display_name: "Leanish Review"
-  short_description: "High-confidence pull request review"
-  default_prompt: "Use $leanish-review to review this pull request for high-confidence bugs and instruction misalignments."
-policy:
-  allow_implicit_invocation: false

@@ -1,6 +1,0 @@
-interface:
-  display_name: "Leanish Dependency-upgrade"
-  short_description: "Upgrade deps via Gradle plugin, verify CVEs, and publish the PR"
-  default_prompt: "Use $leanish-dependency-upgrade to upgrade direct dependencies to their latest versions via a temporary Gradle update plugin, move transitive dependencies with CVEs to the closest compatible safe versions, and push the finished changes to a pull request."
-policy:
-  allow_implicit_invocation: false
