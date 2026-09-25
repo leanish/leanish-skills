@@ -53,9 +53,17 @@ const LEGACY_STATE_FILE = join(STATE_DIR, "sessions.json"); // pre-per-label for
 const LOG_DIR = join(STATE_DIR, "logs");
 const LOG_KEEP = 100; // most-recent logs to retain; older ones are pruned
 
-// Codex runs at this effort unless the caller overrides with --effort. Kept high
-// on purpose: an independent adversarial reviewer is worth the extra reasoning.
-const DEFAULT_EFFORT = "xhigh";
+// Codex runs on this model and effort unless the caller overrides them. Set by the
+// user: the latest GPT Sol at high, instead of inheriting whatever
+// ~/.codex/config.toml says. The Astra fallback (--model astra --effort high) is
+// described in SKILL.md.
+const DEFAULT_EFFORT = "high";
+const DEFAULT_MODEL = "sol";
+// Family aliases resolve, on every call, to the newest visible `gpt-<version>-<family>`
+// in Codex's local model cache, so labels move to a new release once Codex lists it.
+// Any other --model value is passed to codex as is.
+const MODEL_FAMILIES = new Set(["sol", "astra"]);
+const MODELS_CACHE_FILE = join(process.env.CODEX_HOME || join(homedir(), ".codex"), "models_cache.json");
 
 function die(message, code = 1) {
   process.stderr.write(`[codex-converse] error: ${message}\n`);
@@ -261,6 +269,91 @@ function resolvePrompt(opts) {
 // last-message file (preferred for the final message, with the agent_message
 // event as fallback). Pure (no I/O) so it can be unit-tested without spawning
 // codex — the whole point of consolidating the four old single-purpose parsers.
+// Settings for a call. A resumed label keeps what its record holds, flags ignored;
+// a missing model or effort stays null, so codex falls back to config.toml. A new
+// label takes the flags, or the defaults.
+export function resolveSessionSettings(existing, opts) {
+  if (existing) {
+    return {
+      sandbox: existing.sandbox,
+      model: existing.model ?? null,
+      effort: existing.effort ?? null,
+    };
+  }
+  return {
+    sandbox: opts.sandbox || "read-only",
+    model: opts.model || DEFAULT_MODEL,
+    effort: opts.effort || DEFAULT_EFFORT,
+  };
+}
+
+// Parses Codex's model cache text; throws when it isn't JSON with a `models` array.
+export function parseModelsCache(text) {
+  let cache;
+  try {
+    cache = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`invalid Codex model cache (${MODELS_CACHE_FILE}): ${err.message}`);
+  }
+  if (!Array.isArray(cache?.models)) {
+    throw new Error(`invalid Codex model cache (${MODELS_CACHE_FILE}): no "models" array`);
+  }
+  return cache;
+}
+
+function compareVersions(a, b) {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const diff = (a[i] ?? -1) - (b[i] ?? -1);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+// The codex model for a recorded model: a family alias becomes the newest visible
+// `gpt-<version>-<family>` in the cache (versions compare by integer components, so
+// 6.10 > 6.9); anything else, including null, passes through without reading the
+// cache. Throws when no model matches or the newest one lacks the requested effort,
+// rather than falling back to an older version.
+export function resolveModel(model, effort, readCache) {
+  if (!MODEL_FAMILIES.has(model)) return model;
+  const pattern = new RegExp(`^gpt-(\\d+(?:\\.\\d+)*)-${model}$`);
+  const candidates = parseModelsCache(readCache()).models.flatMap((entry) => {
+    const match = entry?.visibility === "list" && pattern.exec(entry.slug ?? "");
+    return match ? [{ entry, version: match[1].split(".").map(Number) }] : [];
+  });
+  if (candidates.length === 0) {
+    throw new Error(`no listed gpt-<version>-${model} model in ${MODELS_CACHE_FILE}`);
+  }
+  const newest = candidates.reduce((best, c) => (compareVersions(c.version, best.version) > 0 ? c : best));
+  const levels = (newest.entry.supported_reasoning_levels ?? []).map((level) => level.effort);
+  if (effort && !levels.includes(effort)) {
+    throw new Error(`${newest.entry.slug} does not support effort "${effort}" (supports: ${levels.join(", ") || "none listed"})`);
+  }
+  return newest.entry.slug;
+}
+
+// The codex argv for one call; a threadId means resume. `exec` takes --sandbox but
+// `exec resume` has no such flag, so a resume passes it as a config override —
+// otherwise codex resumes on config.toml's sandbox_mode, whatever the record says.
+// The prompt goes over stdin (`-`), never as an argument: avoids the ARG_MAX
+// ceiling and keeps prompt contents out of process listings.
+export function buildCodexArgs({ threadId, sandbox, model, effort, lastMsgFile }) {
+  const args = ["exec"];
+  if (threadId) {
+    args.push("resume", threadId);
+  }
+  args.push("--json", "--skip-git-repo-check", "-o", lastMsgFile);
+  args.push(...(threadId ? ["-c", `sandbox_mode="${sandbox}"`] : ["--sandbox", sandbox]));
+  if (model) {
+    args.push("--model", model);
+  }
+  if (effort) {
+    args.push("-c", `model_reasoning_effort="${effort}"`);
+  }
+  args.push("-");
+  return args;
+}
+
 export function parseTurnOutcome(stdout, lastMsgText = "") {
   let threadId = null;
   let usage = null;
@@ -295,7 +388,7 @@ export function parseTurnOutcome(stdout, lastMsgText = "") {
 function formatUsage(usage) {
   if (!usage) return "";
   const { input_tokens: i, cached_input_tokens: c, output_tokens: o, reasoning_output_tokens: r } = usage;
-  return ` tokens(in=${i ?? "?"},cached=${c ?? 0},out=${o ?? "?"}${r != null ? `,reasoning=${r}` : ""})`;
+  return ` thread_tokens(in=${i ?? "?"},cached=${c ?? 0},out=${o ?? "?"}${r != null ? `,reasoning=${r}` : ""})`;
 }
 
 // Prune the log dir to the most-recent LOG_KEEP files (oldest by mtime go first).
@@ -332,10 +425,14 @@ function printHelp() {
       `  --show <label> | --list | --reset <label>\n\n` +
       `  --trace          echo the full codex JSONL event stream to stderr\n` +
       `Every call's raw events are saved to ~/.claude/codex-converse/logs/ regardless.\n` +
-      `The stderr header reports per-turn token usage (where the quota goes).\n\n` +
-      `Effort defaults to xhigh; override with --effort (none|minimal|low|medium|high|xhigh).\n` +
+      `The stderr header's thread_tokens(...) is the thread's cumulative usage, not this round's.\n\n` +
+      `Model defaults to "${DEFAULT_MODEL}", the newest GPT Sol in Codex's local model cache;\n` +
+      `"astra" picks the newest Astra. Any other --model value is passed to codex as is.\n` +
+      `Effort defaults to ${DEFAULT_EFFORT}; override with --effort (none|minimal|low|medium|high|xhigh).\n` +
       `Sandbox modes: read-only | workspace-write | danger-full-access (default read-only).\n` +
-      `Sandbox/model/effort are fixed at session start; resume reuses them (flags ignored).\n` +
+      `Sandbox/model/effort come from the label's record on every call (flags only set up a\n` +
+      `new label); edit the record to change them for the same thread.\n` +
+      `Older labels recorded without a model or effort resume on the current config.toml values.\n` +
       `Run at most one in-flight call per label; distinct labels may run concurrently.\n`
   );
 }
@@ -399,39 +496,30 @@ function main() {
 
   const existing = loadRecord(opts.label);
   const action = existing ? "resume" : "start";
+  // Resolve before creating the temp dir, so a bad model cache can't leak it.
+  const { sandbox, model, effort } = resolveSessionSettings(existing, opts);
+  if (!VALID_SANDBOX.has(sandbox)) {
+    die(`invalid sandbox in the record for ${opts.label}: ${sandbox} (read-only|workspace-write|danger-full-access)`);
+  }
+  let codexModel;
+  try {
+    codexModel = resolveModel(model, effort, () => readFileSync(MODELS_CACHE_FILE, "utf8"));
+  } catch (err) {
+    die(err.message);
+  }
 
   const tmpDir = mkdtempSync(join(tmpdir(), "codex-converse-"));
   const lastMsgFile = join(tmpDir, "last.txt");
 
-  const args = ["exec"];
-  if (action === "resume") {
-    args.push("resume", existing.threadId);
-  }
-  args.push("--json", "--skip-git-repo-check", "-o", lastMsgFile);
-
-  // Sandbox, model, and effort are locked at session start; a resume reuses the
-  // stored values and ignores any flags (codex resume can't change them anyway).
+  // Sandbox, model, and effort come from the label's record on every call, so flags
+  // are ignored on resume; editing the record changes them for the same thread. A
+  // record without a model or effort resumes on the config.toml default.
   if (action === "resume" && (opts.sandbox || opts.model || opts.effort)) {
     process.stderr.write(
-      "[codex-converse] note: --sandbox/--model/--effort are ignored on resume (locked at session start)\n"
+      "[codex-converse] note: --sandbox/--model/--effort are ignored on resume (the label's record decides; edit it to change them)\n"
     );
   }
-  const sandbox = existing ? existing.sandbox : opts.sandbox || "read-only";
-  if (action === "start") {
-    args.push("--sandbox", sandbox);
-  }
-  const model = existing ? existing.model : opts.model || null;
-  if (model) {
-    args.push("--model", model);
-  }
-  const effort = existing ? existing.effort : opts.effort || DEFAULT_EFFORT;
-  if (effort) {
-    args.push("-c", `model_reasoning_effort="${effort}"`);
-  }
-
-  // Send the prompt over stdin (`-`), never as a process argument: avoids the
-  // ARG_MAX ceiling and keeps prompt contents out of process listings.
-  args.push("-");
+  const args = buildCodexArgs({ threadId: existing?.threadId, sandbox, model: codexModel, effort, lastMsgFile });
 
   const result = spawnSync("codex", args, {
     input: prompt,
@@ -502,7 +590,7 @@ function main() {
 
   process.stderr.write(
     `[codex-converse] label=${opts.label} action=${action} thread=${threadId} round=${rounds}` +
-      `${model ? ` model=${model}` : ""} sandbox=${sandbox}${formatUsage(outcome.usage)}` +
+      `${codexModel ? ` model=${codexModel}` : ""} sandbox=${sandbox}${formatUsage(outcome.usage)}` +
       ` log=${logFile}\n`
   );
   process.stdout.write(message + (message.endsWith("\n") ? "" : "\n"));
