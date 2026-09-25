@@ -20,7 +20,7 @@ Skills live under `skills/<category>/<name>/SKILL.md`. Two categories:
 
 Our first-party skills, still being shaped. New leanish skills land here too.
 
-- [codex-consensus](./skills/wip/codex-consensus/SKILL.md) — debate findings and changes with Codex
+- [chatz-check](./skills/wip/chatz-check/SKILL.md) — debate findings and changes with Codex
   until both agents settle. Claude Code only; invokes Codex through the wrapper.
 - [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
   Luna only when that is cheaper overall, and verify with the smallest sufficient checks.
