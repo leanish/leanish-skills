@@ -20,8 +20,6 @@ Skills live under `skills/<category>/<name>/SKILL.md`. Two categories:
 
 Our first-party skills, still being shaped. New leanish skills land here too.
 
-- [consult-codex](./skills/wip/consult-codex/SKILL.md) — bounded review loop with Codex as a second
-  coding agent that is asked not to edit files.
 - [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
   Luna only when that is cheaper overall, and verify with the smallest sufficient checks.
 - [leanish-cleanup](./skills/wip/leanish-cleanup/SKILL.md) — simplify recently touched code,
