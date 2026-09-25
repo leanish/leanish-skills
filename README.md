@@ -21,6 +21,8 @@ Skills live under `skills/<category>/<name>/SKILL.md`. Two categories:
 Our first-party skills, still being shaped. New leanish skills (e.g. `consult-codex`, coming) land
 here too.
 
+- [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
+  Luna only when that is cheaper overall, and verify with the smallest sufficient checks.
 - [leanish-cleanup](./skills/wip/leanish-cleanup/SKILL.md) — simplify recently touched code,
   behavior-preserving.
 - [leanish-dependency-upgrade](./skills/wip/leanish-dependency-upgrade/SKILL.md) — dependency
