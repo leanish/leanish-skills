@@ -4,7 +4,7 @@ The skills in this directory are **vendored from external repositories** — not
 leanish suite. Their original authors and licenses are retained here as the licenses require, and
 **each skill directory carries its own `LICENSE`** so the notice travels with the skill when it is
 installed individually (the installer copies only the skill directory, not this parent file). Each
-skill is used as-is unless a local change is noted in its own directory.
+skill is used as-is unless a local change is noted below.
 
 ## Attribution
 
@@ -27,8 +27,9 @@ Last synced from upstream on **2026-05-31 12:06:30 EEST (+0300)**:
 
 Notes: upstream shares the `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` files used by
 `improve-codebase-architecture` with `grill-with-docs`; this package copies them into
-`improve-codebase-architecture` too, so each skill remains individually installable. The
-`agents/openai.yaml` adapter in each skill is a local install artifact, not upstream content.
+`improve-codebase-architecture` too, and points its `SKILL.md` links at those copies, so each skill
+remains individually installable. The `agents/openai.yaml` adapter in each skill is a local install
+artifact, not upstream content.
 
 ## Copyright notices
 

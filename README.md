@@ -1,16 +1,26 @@
 # leanish-skills
 
 Personal agent skills, installable into your coding agents (Claude Code, Codex, …) with the
-[`skills`](https://github.com/mattpocock/skills) CLI.
+[`skills`](https://github.com/vercel-labs/skills) CLI.
 
 ## Install
+
+Run from the project where you want the skills (add `-g` to install them for your user instead):
 
 ```sh
 npx skills@latest add leanish/leanish-skills
 ```
 
-Pick the skills and target agents when prompted. Each skill is then invoked using your agent's own
-convention — e.g. `/leanish-review` in Claude Code, `$leanish-review` in Codex/OpenAI.
+Pick the skills and target agents when prompted. Some skills target a single agent (see below); to
+install one skill for one agent:
+
+```sh
+npx skills@latest add leanish/leanish-skills --skill chatz-consensus -a claude-code
+npx skills@latest add leanish/leanish-skills --skill frugality -a codex
+```
+
+Each skill is then invoked using your agent's own convention — e.g. `/chatz-consensus` in Claude
+Code, `$frugality` in Codex.
 
 ## Layout
 
@@ -21,15 +31,11 @@ Skills live under `skills/<category>/<name>/SKILL.md`. Two categories:
 Our first-party skills, still being shaped. New leanish skills land here too.
 
 - [chatz-consensus](./skills/wip/chatz-consensus/SKILL.md) — debate findings and changes with Codex ("Chatz")
-  until both agents settle. Claude Code only; invokes Codex through the wrapper.
+  until both agents settle. Claude Code only: it calls Codex through its wrapper, so it needs
+  Node.js and a working Codex CLI.
 - [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
-  Luna only when that is cheaper overall, and verify with the smallest sufficient checks.
-- [leanish-cleanup](./skills/wip/leanish-cleanup/SKILL.md) — simplify recently touched code,
-  behavior-preserving.
-- [leanish-dependency-upgrade](./skills/wip/leanish-dependency-upgrade/SKILL.md) — dependency
-  freshness + CVE-driven upgrade triage.
-- [leanish-review](./skills/wip/leanish-review/SKILL.md) — review PRs for high-confidence bugs and
-  actionable threads.
+  Luna only when that is cheaper overall, and verify with the smallest sufficient checks. Codex
+  only: it delegates to Codex sub-agents running Luna.
 
 ### `third-party/` — vendored / external (not leanish-authored)
 

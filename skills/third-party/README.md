@@ -1,8 +1,8 @@
 # third-party skills
 
 Skills here are **not authored as part of the leanish suite** — they are vendored from external
-repositories, kept here for reference and reproducible local install. They carry no `leanish-`
-prefix; the suite's own (work-in-progress) skills live in `../wip/`.
+repositories, kept here for reference and reproducible local install. The suite's own
+(work-in-progress) skills live in `../wip/`.
 
 | Skill | Source | License |
 |---|---|---|
