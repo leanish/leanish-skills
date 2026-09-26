@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// chatz-check.mjs — hold ONE Codex session across many rounds.
+// chatz-consensus.mjs — hold ONE Codex session across many rounds.
 //
 // First call for a <label> starts a fresh `codex exec` session and remembers
 // its thread_id under that label. Every later call with the same label runs
@@ -7,16 +7,16 @@
 // Distinct labels = distinct sessions, so parallel debates never cross-mix.
 //
 // Usage:
-//   node chatz-check.mjs <label> --prompt-file <path> [--model M] [--sandbox MODE] [--effort E]
-//   node chatz-check.mjs <label> --message "text"     [--model M] [--sandbox MODE] [--effort E]
-//   node chatz-check.mjs <label> -- <prompt words...>  (everything after -- is the prompt)
-//   echo "text" | node chatz-check.mjs <label> --stdin [...]
+//   node chatz-consensus.mjs <label> --prompt-file <path> [--model M] [--sandbox MODE] [--effort E]
+//   node chatz-consensus.mjs <label> --message "text"     [--model M] [--sandbox MODE] [--effort E]
+//   node chatz-consensus.mjs <label> -- <prompt words...>  (everything after -- is the prompt)
+//   echo "text" | node chatz-consensus.mjs <label> --stdin [...]
 //
 // Management:
-//   node chatz-check.mjs --show <label>     print stored thread_id + metadata
-//   node chatz-check.mjs --list             list all known labels
-//   node chatz-check.mjs --reset <label>    forget a label (next call starts fresh)
-//   node chatz-check.mjs --help
+//   node chatz-consensus.mjs --show <label>     print stored thread_id + metadata
+//   node chatz-consensus.mjs --list             list all known labels
+//   node chatz-consensus.mjs --reset <label>    forget a label (next call starts fresh)
+//   node chatz-consensus.mjs --help
 //
 // stdout = Codex's final message (clean). stderr = a one-line metadata header.
 // Exit code mirrors the underlying codex process; non-zero on failure.
@@ -45,7 +45,7 @@ const VALID_EFFORT = new Set(["none", "minimal", "low", "medium", "high", "xhigh
 // length so they always fit in a filename.
 const LABEL_RE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const MAX_LABEL_LEN = 64;
-const STATE_DIR = join(homedir(), ".claude", "chatz-check");
+const STATE_DIR = join(homedir(), ".claude", "chatz-consensus");
 // One file per label: concurrent calls on different labels touch different files,
 // so there is no shared-file read-modify-write race to lose updates.
 const LABELS_DIR = join(STATE_DIR, "labels");
@@ -66,7 +66,7 @@ const MODEL_FAMILIES = new Set(["sol", "astra"]);
 const MODELS_CACHE_FILE = join(process.env.CODEX_HOME || join(homedir(), ".codex"), "models_cache.json");
 
 function die(message, code = 1) {
-  process.stderr.write(`[chatz-check] error: ${message}\n`);
+  process.stderr.write(`[chatz-consensus] error: ${message}\n`);
   process.exit(code);
 }
 
@@ -121,7 +121,7 @@ function loadRecord(label) {
     const backup = `${path}.corrupt-${Date.now()}`;
     try {
       renameSync(path, backup);
-      process.stderr.write(`[chatz-check] warning: corrupt record backed up to ${backup}\n`);
+      process.stderr.write(`[chatz-consensus] warning: corrupt record backed up to ${backup}\n`);
     } catch {
       /* best effort */
     }
@@ -167,7 +167,7 @@ function migrateLegacyState() {
     for (const [label, rec] of Object.entries(labels)) {
       if (!isValidLabel(label)) {
         // Legacy state predates label validation; never write an unsafe label as a path.
-        process.stderr.write(`[chatz-check] warning: skipping unsafe legacy label "${label}" during migration\n`);
+        process.stderr.write(`[chatz-consensus] warning: skipping unsafe legacy label "${label}" during migration\n`);
         continue;
       }
       if (!existsSync(recordPath(label))) {
@@ -417,14 +417,14 @@ function pruneLogs() {
 
 function printHelp() {
   process.stdout.write(
-    `chatz-check — hold one Codex session across many rounds.\n\n` +
-      `  node chatz-check.mjs <label> --prompt-file <path> [--model M] [--sandbox MODE] [--effort E]\n` +
-      `  node chatz-check.mjs <label> --message "text"\n` +
-      `  node chatz-check.mjs <label> -- <prompt...>\n` +
-      `  echo text | node chatz-check.mjs <label> --stdin\n\n` +
+    `chatz-consensus — hold one Codex session across many rounds.\n\n` +
+      `  node chatz-consensus.mjs <label> --prompt-file <path> [--model M] [--sandbox MODE] [--effort E]\n` +
+      `  node chatz-consensus.mjs <label> --message "text"\n` +
+      `  node chatz-consensus.mjs <label> -- <prompt...>\n` +
+      `  echo text | node chatz-consensus.mjs <label> --stdin\n\n` +
       `  --show <label> | --list | --reset <label>\n\n` +
       `  --trace          echo the full codex JSONL event stream to stderr\n` +
-      `Every call's raw events are saved to ~/.claude/chatz-check/logs/ regardless.\n` +
+      `Every call's raw events are saved to ~/.claude/chatz-consensus/logs/ regardless.\n` +
       `The stderr header's thread_tokens(...) is the thread's cumulative usage, not this round's.\n\n` +
       `Model defaults to "${DEFAULT_MODEL}", the newest GPT Sol in Codex's local model cache;\n` +
       `"astra" picks the newest Astra. Any other --model value is passed to codex as is.\n` +
@@ -451,7 +451,7 @@ function main() {
     const records = listRecords();
     const labels = Object.keys(records);
     if (!labels.length) {
-      process.stdout.write("(no active chatz-check sessions)\n");
+      process.stdout.write("(no active chatz-consensus sessions)\n");
       return;
     }
     for (const label of labels) {
@@ -508,7 +508,7 @@ function main() {
     die(err.message);
   }
 
-  const tmpDir = mkdtempSync(join(tmpdir(), "chatz-check-"));
+  const tmpDir = mkdtempSync(join(tmpdir(), "chatz-consensus-"));
   const lastMsgFile = join(tmpDir, "last.txt");
 
   // Sandbox, model, and effort come from the label's record on every call, so flags
@@ -516,7 +516,7 @@ function main() {
   // record without a model or effort resumes on the config.toml default.
   if (action === "resume" && (opts.sandbox || opts.model || opts.effort)) {
     process.stderr.write(
-      "[chatz-check] note: --sandbox/--model/--effort are ignored on resume (the label's record decides; edit it to change them)\n"
+      "[chatz-consensus] note: --sandbox/--model/--effort are ignored on resume (the label's record decides; edit it to change them)\n"
     );
   }
   const args = buildCodexArgs({ threadId: existing?.threadId, sandbox, model: codexModel, effort, lastMsgFile });
@@ -589,7 +589,7 @@ function main() {
   });
 
   process.stderr.write(
-    `[chatz-check] label=${opts.label} action=${action} thread=${threadId} round=${rounds}` +
+    `[chatz-consensus] label=${opts.label} action=${action} thread=${threadId} round=${rounds}` +
       `${codexModel ? ` model=${codexModel}` : ""} sandbox=${sandbox}${formatUsage(outcome.usage)}` +
       ` log=${logFile}\n`
   );
