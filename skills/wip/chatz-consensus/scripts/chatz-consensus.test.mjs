@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildCodexArgs, parseModelsCache, parseTurnOutcome, resolveModel, resolveSessionSettings } from "./codex-converse.mjs";
+import { buildCodexArgs, parseModelsCache, parseTurnOutcome, resolveModel, resolveSessionSettings } from "./chatz-consensus.mjs";
 
 const lines = (...events) => events.map((e) => JSON.stringify(e)).join("\n");
 

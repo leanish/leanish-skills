@@ -1,5 +1,5 @@
 ---
-name: codex-consensus
+name: chatz-consensus
 description: >-
   Work with Codex (the OpenAI CLI), also called Chatz, as a second reviewer:
   Claude and Codex review plans, changes and answers, argue each point in one
@@ -10,11 +10,11 @@ description: >-
   Trigger when the user wants agreement with Codex or Chatz: "agree with Codex",
   "settle/validate/cross-check this with Codex", "have Codex weigh in", "ask
   Chatz", "check/validate this with Chatz", "preguntale / concordá / validá con
-  Chatz", or /codex-consensus. Do NOT trigger on a plain "review this", "is this
+  Chatz", or /chatz-consensus. Do NOT trigger on a plain "review this", "is this
   correct?" or "second opinion" that doesn't mention Codex, Chatz or agreement.
 ---
 
-# Codex Consensus
+# Chatz Consensus
 
 Codex is also called **Chatz**. Use it as an independent second reviewer: each side
 argues its points until you agree, and no change starts before its plan has gone
@@ -24,7 +24,7 @@ through the settle loop.
 
 ```
 # <absolute path to this skill> = the "Base directory for this skill:" path shown when this skill is invoked
-SCRIPT=<absolute path to this skill>/scripts/codex-converse.mjs
+SCRIPT=<absolute path to this skill>/scripts/chatz-consensus.mjs
 node "$SCRIPT" <label> --prompt-file /tmp/msg.md   # long messages
 node "$SCRIPT" <label> --message "..."             # short ones
 ```
@@ -69,7 +69,7 @@ At the end, report what was done, what was skipped and why, and what is unresolv
 ## Who implements
 
 Codex works in the directory the wrapper is invoked from, with the sandbox stored
-in the label's record (`~/.claude/codex-converse/labels/<label>.json`).
+in the label's record (`~/.claude/chatz-consensus/labels/<label>.json`).
 
 - **Claude** (default). The label stays `read-only` (the wrapper default).
 - **Codex**, only when the user asks. Open the label with
@@ -127,5 +127,5 @@ on alone.
 - If every resume of a thread returns 404 after a failed server-side summary,
   confirm it and open a new label.
 
-Every call's log is in `~/.claude/codex-converse/logs/`; `--trace` also prints the
+Every call's log is in `~/.claude/chatz-consensus/logs/`; `--trace` also prints the
 full event stream. See [EXAMPLES.md](EXAMPLES.md) for worked examples.
