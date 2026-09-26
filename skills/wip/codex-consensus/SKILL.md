@@ -1,124 +1,131 @@
 ---
 name: codex-consensus
 description: >-
-  Adversarial validation loop between Claude and Codex (the OpenAI CLI): both
-  independently review a change, plan, or set of findings, argue each item, and
-  iterate on ONE persistent Codex session until they settle (or hit the round
-  cap); then changes are implemented and the implementation is debated the same
-  way. Trigger when the user wants Claude and Codex to reach AGREEMENT — i.e.
-  they name Codex alongside a consensus/cross-check intent: "agree with Codex",
-  "settle this with Codex", "reach consensus with Codex",
-  "double-check/cross-check this with Codex", "validate this with Codex",
-  "have Codex weigh in and agree" — or they run the /codex-consensus command. Do NOT trigger on
-  generic requests that lack this Codex-agreement intent: a plain "review this",
-  "is this correct?", or "get a second opinion" with no mention of Codex or
-  reaching consensus is NOT enough. Mode: Claude implements by default; Codex
-  implements when told to "make Codex" do it.
+  Work with Codex (the OpenAI CLI), also called Chatz, as a second reviewer:
+  Claude and Codex review plans, changes and answers, argue each point in one
+  persistent Codex thread, and settle on what to do. Every plan goes to Codex, and
+  every implementation is reviewed by whoever didn't write it, follow-ups included.
+  Claude implements by default; Codex
+  implements, or both do and Claude combines them, only when the user asks.
+  Trigger when the user wants agreement with Codex or Chatz: "agree with Codex",
+  "settle/validate/cross-check this with Codex", "have Codex weigh in", "ask
+  Chatz", "check/validate this with Chatz", "preguntale / concordá / validá con
+  Chatz", or /codex-consensus. Do NOT trigger on a plain "review this", "is this
+  correct?" or "second opinion" that doesn't mention Codex, Chatz or agreement.
 ---
 
 # Codex Consensus
 
-Pair with Codex as an independent second brain. The two of you critique each
-other's findings, argue each one, and **settle** on the set worth acting on —
-then implement and review the result the same way. One Codex session spans the
-whole task, so Codex never forgets what was already argued.
+Codex is also called **Chatz**. Use it as an independent second reviewer: each side
+argues its points until you agree, and no change starts before its plan has gone
+through the settle loop.
 
-## The one rule that makes this work
-
-Every Codex turn for a given task goes through the wrapper with the **same
-`<label>`**. Same label = same Codex session (memory preserved). Pick a unique,
-descriptive label per task (e.g. `auth-refactor`). Different tasks → different
-labels → no cross-contamination, even in parallel.
+## Talking to Codex
 
 ```
 # <absolute path to this skill> = the "Base directory for this skill:" path shown when this skill is invoked
 SCRIPT=<absolute path to this skill>/scripts/codex-converse.mjs
-# message via a temp file (best for multi-paragraph content):
-node "$SCRIPT" auth-refactor --prompt-file /tmp/msg.md
-# or inline:
-node "$SCRIPT" auth-refactor --message "..."
+node "$SCRIPT" <label> --prompt-file /tmp/msg.md   # long messages
+node "$SCRIPT" <label> --message "..."             # short ones
 ```
-stdout = Codex's reply (clean). stderr = `label / action / thread / round`.
-Helpers: `--show <label>`, `--list`, `--reset <label>`.
 
-## Set the sandbox at session start (it's locked after)
+- **One label per task, reused.** The label keeps Codex's thread, so send only what
+  is new.
+- One call at a time per label; different labels can run in parallel.
+- stdout is Codex's reply. stderr shows label, thread, round and `thread_tokens`
+  (the thread's running total, not this round's).
+- Helpers: `--show <label>`, `--list`, `--reset <label>`.
 
-Decide **who implements** before the first Codex call — the sandbox can't change
-on resume:
+## Keeping the review independent
 
-- **Claude implements** (default; Codex only ever reviews) → first call uses
-  `--sandbox read-only` (also the wrapper default). Codex cannot touch files.
-- **Codex implements** ("make Codex handle it") → first call must pass
-  `--sandbox workspace-write` explicitly.
+- Put the problem, the diff and the criteria in the message, and your own position
+  in a separate file. Ask Codex to write its findings in an interim message before
+  opening that file, then compare. The log records the order.
+- What you report (tests pass, a file says X) is a claim. Codex checks the
+  important ones itself, with the smallest check that settles them.
 
-## Workflow
+## Questions
 
-Announce the mode and label, then run two debates back-to-back. Narrate every
-round so the user sees the steps (keep it skimmable).
+For a question with no change, keep the review independent: send the question and
+the evidence, and your draft answer in a separate file that Codex reads after its
+own interim answer. Settle, and tell the user where you agree and where you don't.
 
-### Phase 1 — Debate the review / plan
-1. **Claude produces first.** Do your own review (or plan) and write the findings
-   to a temp file, each as a numbered item with a clear claim + rationale + a
-   `worth-handling: yes/no` stance.
-2. **Hand it to Codex.** Send that file. Ask Codex to do its *own independent*
-   pass: for each of your items state agree / disagree **with reasoning**, add
-   anything you missed, and judge what is worth handling. Tell it **not to edit
-   files** in this phase.
-3. **Run the settle loop** (below) over the findings until you agree on the final
-   set worth handling.
+## Changes
 
-### Phase 2 — Implement the agreed set
-- **Claude implements:** make the changes for the settled items (follow repo
-  norms / TDD).
-- **Codex implements:** ask the same session to implement the settled items.
+1. **Plan.** Write numbered items (claim, reason, worth handling: yes/no). Codex
+   does its own pass, agrees or disagrees with reasons, and adds what you missed.
+   Codex doesn't edit files while planning, even if its label can write. Settle.
+2. **Implement** the agreed items (see **Who implements**).
+3. **Review.** Whoever didn't write it reviews it: the diff, or before/after
+   evidence for changes outside Git (config, data, memory). Settle.
 
-### Phase 3 — Debate the implementation
-- Send the diff to the same session (whoever did *not* write it reviews it; the
-  reviewer can run `git diff` itself). Run the settle loop again until you agree
-  the change is correct. Codex revises in-session, or Claude addresses/rebuts.
+Every correction goes through the same loop, including ones the user asks for
+later: plan, settle with Codex, then edit. If you changed something before Codex
+saw the plan, tell the user; Codex reviews the plan, and whoever didn't implement
+reviews the result.
 
-When both debates have settled, report the outcome: what was handled, what was
-agreed to skip and why, and anything left unresolved.
+At the end, report what was done, what was skipped and why, and what is unresolved.
 
-## The settle loop
+## Who implements
 
-Track each item as **agreed-handle**, **agreed-skip**, or **open**. Repeat:
-1. Read the other side's points. For each: **concede** (they convinced you) or
-   **rebut** (state why). Only discuss open or newly-raised items — don't
-   re-litigate settled ones.
-2. Send concessions + rebuttals back through the same label.
-3. **Settled** when no open items remain. **Stop early** if the same arguments
-   repeat (you're circling) — mark those items unresolved.
+Codex works in the directory the wrapper is invoked from, with the sandbox stored
+in the label's record (`~/.claude/codex-converse/labels/<label>.json`).
 
-- **Round cap: 5 per debate** (Phase 1 and Phase 3 are capped separately).
-  Extend to **10** only if points are genuinely still converging. Count rounds
-  yourself — the wrapper's `round=N` is *total* calls for the label across both
-  phases, not a per-debate counter.
-- On cap or circling, make the final call yourself and surface the disagreement
-  to the user; don't pretend consensus you didn't reach.
+- **Claude** (default). The label stays `read-only` (the wrapper default).
+- **Codex**, only when the user asks. Open the label with
+  `--sandbox workspace-write`, or edit `sandbox` in its record to keep the thread,
+  and set it back to `read-only` when Codex goes back to reviewing. In the request,
+  say which files, data and network access it may use, that it must not commit or
+  push unless asked, and ask for a report of changes and tests.
+- **Both**, only when the user asks. Start from the same base. Codex works in its
+  own git worktree (label in `workspace-write`, wrapper invoked from there) and
+  Claude in the main tree. Claude reviews Codex's version and combines the best of
+  both in the main tree. Then set the label to `read-only` and invoke it from the
+  main tree, so Codex reviews the combined result.
 
-## If a round fails (quota, network, crash)
+Check a `danger-full-access` record before reusing it.
 
-A failed call exits non-zero with the real reason (e.g. *"out of credits"*) and a
-`[trace: …]` path; the wrapper writes **no state** on failure, so nothing is
-corrupted and no round is counted.
+## Settling
 
-- **Stop — don't fabricate a settled round.** Report the exact error to the user.
-- **A resume is recoverable.** If the label already existed, it still points at
-  the same Codex thread, so once the cause is resolved, re-issue the *same* round:
-  it resumes that thread with full memory and continues where it stalled.
-- **A failed first call records nothing**, so just retry it — that starts a fresh
-  session (the orphaned Codex-side thread is harmless).
-- Don't auto-retry a quota/credit failure — wait for the user to resolve it.
+For each open point, concede or rebut with a reason. Reopen settled points only if
+something material changes.
+Stop when nothing is open, or when the same arguments repeat.
 
-## Notes
-- Long messages → always `--prompt-file` (avoids shell-escaping pain).
-- **One in-flight call per label.** Distinct labels may run concurrently (that's
-  how parallel debates stay isolated); same-label calls must be sequential — send
-  round N+1 only after round N returns.
-- Effort defaults to `xhigh`. Override with `--effort` on the **first** call
-  (locked after).
-- The stderr header reports per-turn token usage; every call's raw JSONL is saved
-  to `~/.claude/codex-converse/logs/`. Add `--trace` to echo the full event
-  stream inline (useful for diagnosing errors like quota/credit failures).
-- See [EXAMPLES.md](EXAMPLES.md) for both modes worked end-to-end.
+- Up to 5 rounds per debate (10 if it is still converging). Count them yourself:
+  the wrapper's `round` counts every call on the label.
+- If you don't settle, escalate to Astra (below). If that fails too, decide
+  yourself and tell the user where you disagreed. Never claim an agreement you
+  didn't reach.
+
+## Model
+
+- Codex runs on the **latest GPT Sol at `high`**. `sol` and `astra` are aliases
+  that the wrapper resolves on every call to the newest version in Codex's model
+  list, so new releases are picked up on their own.
+- Use the **latest GPT Astra** (`--model astra --effort high`) when the user asks,
+  when Sol says it can't solve the task, or when a debate doesn't settle. Astra gets
+  its own label, `<label>-astra`, reused on later escalations of the same task. The
+  first time, tell it what is agreed, what is open and both positions. If
+  the user asked for Astra or Sol couldn't solve it, stay on Astra; otherwise go
+  back to Sol once the point is settled.
+- Flags only set up a new label. To change the model, effort or sandbox of an
+  existing thread and keep its memory, edit its record.
+
+## If a call fails
+
+For any failure (credits, capacity, network, crash): check the log if the error
+provides one (`[trace: …]`) and deal with anything Codex already changed, so the
+retry doesn't repeat it; then retry once. If it fails again, stop and tell the user the exact error. Don't carry
+on alone.
+
+- A failed call doesn't update the wrapper's record, though the log and Codex's
+  thread may hold work. If the label existed, retrying resumes the same thread.
+- If a *first* call fails after real work, its log has the `thread_id`: recreate
+  the record (`threadId`, `sandbox`, `cwd`, `model`, `effort`) instead of starting
+  over, and check it with `--show`.
+- A process that must outlive Codex's run has to be started detached.
+- If every resume of a thread returns 404 after a failed server-side summary,
+  confirm it and open a new label.
+
+Every call's log is in `~/.claude/codex-converse/logs/`; `--trace` also prints the
+full event stream. See [EXAMPLES.md](EXAMPLES.md) for worked examples.
