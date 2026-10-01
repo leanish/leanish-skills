@@ -5,10 +5,11 @@ description: >-
   reviews Claude's plan, implementation and final state, and both argue each point
   in one persistent Codex thread until they agree. Sol, Astra and Luna name Codex
   model families (always the newest version). Claude plans and implements by
-  default; Codex plans or implements only when the user asks. Trigger whenever the
-  user asks for a review or a second opinion, or wants Codex involved: "review
-  this", "second opinion", "ask Chatz", "check this with Codex", "have
-  Sol/Astra/Luna review it", "let Codex implement", or /chatz-consensus.
+  default; Codex plans or implements only when the user asks. Trigger on any
+  question or request where a second opinion helps: a diff, a question about code,
+  a law or a past decision, a plan, a change; or when the user wants Codex involved
+  ("review this", "ask Chatz", "check this with Codex", "have Sol/Astra/Luna review
+  it", "let Codex implement", /chatz-consensus).
 ---
 
 # Chatz Consensus
@@ -68,12 +69,17 @@ implementing, then Claude combining the two, is only on request (see EXAMPLES.md
 - `--budget` shows Codex's current usage, resets and credits without a model call.
   `--help` has the rest (`--list`, `--show`, `--reset`, `--trace`).
 
-## Independent and cheap
+## Independent, private and cheap
 
 - Put the problem, the diff and the criteria in the message, and your own position
   in a separate file. Ask Codex to write its findings before opening that file.
 - What you report (tests pass, a file says X) is a claim; Codex checks the
   important ones itself.
+- Trivial requests Claude handles directly. Small mechanical changes may skip
+  planning; Sol reviews the result and final state in one call.
+- Unless the user authorizes it, don't give Codex private data or let it read
+  private files. Use public sources or clearly labeled synthetic examples; run
+  sanitized reviews outside private project directories.
 - Batch findings; no rounds just to say "ok". An agreed, concrete correction is its
   own plan. When the budget is low, send one self-contained request that says not
   to ask questions.
