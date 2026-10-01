@@ -15,11 +15,11 @@ Pick the skills and target agents when prompted. Some skills target a single age
 install one skill for one agent:
 
 ```sh
-npx skills@latest add leanish/leanish-skills --skill chatz-consensus -a claude-code
+npx skills@latest add leanish/leanish-skills --skill four-eyes -a claude-code
 npx skills@latest add leanish/leanish-skills --skill frugality -a codex
 ```
 
-Each skill is then invoked using your agent's own convention — e.g. `/chatz-consensus` in Claude
+Each skill is then invoked using your agent's own convention — e.g. `/four-eyes` in Claude
 Code, `$frugality` in Codex.
 
 ## Layout
@@ -30,7 +30,7 @@ Skills live under `skills/<category>/<name>/SKILL.md`. Two categories:
 
 Our first-party skills, still being shaped. New leanish skills land here too.
 
-- [chatz-consensus](./skills/wip/chatz-consensus/SKILL.md) — Codex ("Chatz", on Sol, Astra or Luna) as a
+- [four-eyes](./skills/wip/four-eyes/SKILL.md) — Codex ("Chatz", on Sol, Astra or Luna) as a
   second agent that reviews the plan, the implementation and the final state, debating each point until
   both agents settle; it plans or implements when asked. Claude Code only: it calls Codex through its
   wrapper, so it needs Node.js and a working Codex CLI.

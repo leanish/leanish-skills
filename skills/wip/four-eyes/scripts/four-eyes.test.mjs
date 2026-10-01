@@ -18,9 +18,9 @@ import {
   resolveEffort,
   resolveModel,
   waitableFailure,
-} from "./chatz-consensus.mjs";
+} from "./four-eyes.mjs";
 
-const SCRIPT = join(fileURLToPath(new URL(".", import.meta.url)), "chatz-consensus.mjs");
+const SCRIPT = join(fileURLToPath(new URL(".", import.meta.url)), "four-eyes.mjs");
 const lines = (...events) => events.map((e) => JSON.stringify(e)).join("\n");
 
 // ---- Codex's event stream ----
@@ -312,7 +312,7 @@ fs.appendFileSync(path.join(dir, "calls.jsonl"), JSON.stringify({ args, prompt, 
 fs.writeFileSync(path.join(dir, "exec.pid"), String(process.pid));
 if (scenario === "break-record") {
   // Make the wrapper's record write fail: its temp file path becomes a directory.
-  const labels = path.join(process.env.CHATZ_CONSENSUS_HOME, "labels");
+  const labels = path.join(process.env.FOUR_EYES_HOME, "labels");
   for (const f of fs.readdirSync(labels)) {
     if (f.endsWith(".lock")) fs.mkdirSync(path.join(labels, f.replace(/\\.lock$/, ".json") + "." + process.ppid + ".tmp"));
   }
@@ -352,7 +352,7 @@ const CACHE = {
 
 // An isolated home: fake codex (the only codex on PATH), model cache and state.
 function sandbox() {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), "chatz-consensus-test-")));
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "four-eyes-test-")));
   const bin = join(root, "bin");
   mkdirSync(bin);
   symlinkSync(process.execPath, join(bin, "node"));
@@ -367,8 +367,8 @@ function sandbox() {
     HOME: root,
     TMPDIR: root,
     CODEX_HOME: codexHome,
-    CHATZ_CONSENSUS_HOME: join(root, "state"),
-    CHATZ_CONSENSUS_RECHECK_SECONDS: "0.05", // so a real retry without a limits answer comes after 0.25 s
+    FOUR_EYES_HOME: join(root, "state"),
+    FOUR_EYES_RECHECK_SECONDS: "0.05", // so a real retry without a limits answer comes after 0.25 s
     FAKE_CODEX_DIR: root,
   };
   const plan = (...scenarios) => writeFileSync(join(root, "plan.json"), JSON.stringify(scenarios));
@@ -691,10 +691,10 @@ test("bad arguments fail clearly", () => {
   assert.match(s.run(["task", "--wait=0", "--message", "x"]).stderr, /invalid --wait hours/);
   assert.match(s.run(["../x", "--message", "x"]).stderr, /invalid label/);
   const badPoll = spawnSync(process.execPath, [SCRIPT, "task", "--wait", "--message", "x"], {
-    env: { ...s.env, CHATZ_CONSENSUS_RECHECK_SECONDS: "soon" },
+    env: { ...s.env, FOUR_EYES_RECHECK_SECONDS: "soon" },
     cwd: s.work,
     encoding: "utf8",
   });
-  assert.match(badPoll.stderr, /invalid CHATZ_CONSENSUS_RECHECK_SECONDS: soon/);
+  assert.match(badPoll.stderr, /invalid FOUR_EYES_RECHECK_SECONDS: soon/);
   assert.equal(s.calls().length, 0);
 });

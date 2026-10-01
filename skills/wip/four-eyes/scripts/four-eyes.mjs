@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// chatz-consensus.mjs — one persistent Codex thread per label.
+// four-eyes.mjs — one persistent Codex thread per label.
 //
 // The first call on a <label> starts a `codex exec` thread and records its id under
 // that label; every later call resumes it, so Codex keeps the whole conversation.
@@ -28,7 +28,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-const STATE_DIR = process.env.CHATZ_CONSENSUS_HOME || join(homedir(), ".claude", "chatz-consensus");
+const STATE_DIR = process.env.FOUR_EYES_HOME || join(homedir(), ".claude", "four-eyes");
 const LABELS_DIR = join(STATE_DIR, "labels");
 const LOG_DIR = join(STATE_DIR, "logs");
 const LOG_KEEP = 100; // most-recent logs to retain; older ones are pruned
@@ -64,7 +64,7 @@ let currentChild = null; // the running codex process, if any
 let cancelledBy = null; // the signal that cancelled this run, if any
 
 function die(message, code = 1) {
-  process.stderr.write(`[chatz-consensus] error: ${message}\n`);
+  process.stderr.write(`[four-eyes] error: ${message}\n`);
   process.exit(code);
 }
 
@@ -74,7 +74,7 @@ function exitIfCancelled() {
 }
 
 function note(message) {
-  process.stderr.write(`[chatz-consensus] ${message}\n`);
+  process.stderr.write(`[four-eyes] ${message}\n`);
 }
 
 function requireValidLabel(label) {
@@ -517,7 +517,7 @@ export function readRateLimits(timeoutMs = API_TIMEOUT_MS) {
         }
       }
     });
-    send({ id: 1, method: "initialize", params: { clientInfo: { name: "chatz-consensus", version: "1" } } });
+    send({ id: 1, method: "initialize", params: { clientInfo: { name: "four-eyes", version: "1" } } });
   });
 }
 
@@ -562,9 +562,9 @@ export function waitableFailure(error) {
 }
 
 function pollMs() {
-  const text = process.env.CHATZ_CONSENSUS_RECHECK_SECONDS;
+  const text = process.env.FOUR_EYES_RECHECK_SECONDS;
   const seconds = text == null ? POLL_DEFAULT_SECONDS : Number(text);
-  if (!Number.isFinite(seconds) || seconds <= 0) die(`invalid CHATZ_CONSENSUS_RECHECK_SECONDS: ${text}`);
+  if (!Number.isFinite(seconds) || seconds <= 0) die(`invalid FOUR_EYES_RECHECK_SECONDS: ${text}`);
   return seconds * 1000;
 }
 
@@ -702,7 +702,7 @@ async function attemptCall({ label, record, prompt, call }) {
     saved = { ...record };
     save({ cwd, lastAt: startedAt, lastStatus: "started", lastSandbox: call.sandbox });
   }
-  const tmpDir = mkdtempSync(join(tmpdir(), "chatz-consensus-"));
+  const tmpDir = mkdtempSync(join(tmpdir(), "four-eyes-"));
   const lastMsgFile = join(tmpDir, "last.txt");
   ensureDir(LOG_DIR);
   const logFile = join(LOG_DIR, `${label}-${startedAt.replace(/[:.]/g, "-")}.jsonl`);
@@ -848,17 +848,17 @@ function printList() {
 
 function printHelp() {
   process.stdout.write(
-    `chatz-consensus — one persistent Codex thread per label.
+    `four-eyes — one persistent Codex thread per label.
 
 Call (the first call on a label starts its thread; later calls resume it):
-  node chatz-consensus.mjs <label> --prompt-file <path> | --message "text" | --stdin | -- <words>
+  node four-eyes.mjs <label> --prompt-file <path> | --message "text" | --stdin | -- <words>
     --model sol|astra|luna|<model>  model for this call; a new label keeps it (default sol).
                                     A family means its newest model in ${MODELS_CACHE_FILE}.
     --effort <effort>|highest       effort for this call (defaults: sol high, astra medium,
                                     luna highest); a new label keeps it
     --write                         Codex may edit the workspace on this call (else read-only)
     --wait[=hours]                  on a usage limit or no credits, read Codex's limits every
-                                    $CHATZ_CONSENSUS_RECHECK_SECONDS (default ${POLL_DEFAULT_SECONDS} s, no model
+                                    $FOUR_EYES_RECHECK_SECONDS (default ${POLL_DEFAULT_SECONDS} s, no model
                                     call) and retry the same thread once Codex is available
                                     (gives up after ${WAIT_DEFAULT_HOURS} h by default)
     --trace                         stream Codex's events to stderr

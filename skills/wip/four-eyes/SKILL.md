@@ -1,5 +1,5 @@
 ---
-name: chatz-consensus
+name: four-eyes
 description: >-
   Work with Codex (the OpenAI CLI), also called Chatz, as a second agent: it
   reviews Claude's plan, implementation and final state, and both argue each point
@@ -9,11 +9,12 @@ description: >-
   question or request where a second opinion helps: a diff, a question about code,
   a law or a past decision, a plan, a change; or when the user wants Codex involved
   ("review this", "ask Chatz", "check this with Codex", "have Sol/Astra/Luna review
-  it", "let Codex implement", /chatz-consensus).
+  it", "let Codex implement", /four-eyes).
 ---
 
-# Chatz Consensus
+# Four Eyes
 
+Named after the four-eyes principle: nothing is done until two agents have looked at it.
 **Chatz** is Codex, the OpenAI CLI, working as a second agent next to Claude.
 **Sol**, **Astra** and **Luna** are its model families; naming one means its
 newest version.
@@ -54,7 +55,7 @@ implementing, then Claude combining the two, is only on request (see EXAMPLES.md
 ## Calling Chatz
 
     # <absolute path to this skill> = the "Base directory for this skill:" path shown when this skill is invoked
-    SCRIPT=<absolute path to this skill>/scripts/chatz-consensus.mjs
+    SCRIPT=<absolute path to this skill>/scripts/four-eyes.mjs
     node "$SCRIPT" <label> --prompt-file /tmp/msg.md      # or --message "..."
 
 - **One label per task, reused**: it holds Codex's thread, so send only what's new.
