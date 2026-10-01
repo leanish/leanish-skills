@@ -8,7 +8,7 @@
 //
 // stdout = Codex's final message. stderr = one status line (or the error).
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
   closeSync,
@@ -400,7 +400,6 @@ function parseEvent(line) {
 // last turn counts: `turn.started` resets its completion, reply and error.
 export function createOutcome() {
   let threadId = null;
-  let usage = null;
   let error = "";
   let completed = false;
   let agentMessage = "";
@@ -416,7 +415,6 @@ export function createOutcome() {
         error = "";
       } else if (type === "turn.completed") {
         completed = true;
-        if (event.usage) usage = event.usage;
       } else if (type === "error" || type === "turn.failed") {
         const msg = event.message ?? event.error?.message;
         if (msg) error = msg;
@@ -428,7 +426,7 @@ export function createOutcome() {
     },
     // `lastMsgText` is the `-o` last-message file, preferred over the agent_message event.
     result(lastMsgText = "") {
-      return { threadId, usage, error, completed, message: (lastMsgText || "").trim() || agentMessage.trim() };
+      return { threadId, error, completed, message: (lastMsgText || "").trim() || agentMessage.trim() };
     },
   };
 }
@@ -439,19 +437,75 @@ export function parseTurnOutcome(stdout, lastMsgText = "") {
   return outcome.result(lastMsgText);
 }
 
-function formatUsage(usage) {
-  if (!usage) return "";
-  const { input_tokens: i, cached_input_tokens: c, output_tokens: o, reasoning_output_tokens: r } = usage;
-  return ` thread_tokens(in=${i ?? "?"},cached=${c ?? 0},out=${o ?? "?"}${r != null ? `,reasoning=${r}` : ""})`;
+// What to signal besides a process: its descendants, as process groups when they have their own
+// (codex runs each command in a new group and leaves them running when it is stopped), or one by
+// one when they share ours. Empty when `ps` can't list processes.
+export function descendantTargets(rootPid, psOutput, ownPid) {
+  const rows = psOutput
+    .trim()
+    .split("\n")
+    .map((line) => line.trim().split(/\s+/).map(Number))
+    .filter((row) => row.length === 3 && row.every(Number.isInteger));
+  const ownGroup = rows.find(([pid]) => pid === ownPid)?.[2];
+  const children = new Map();
+  for (const [pid, ppid, pgid] of rows) children.set(ppid, [...(children.get(ppid) ?? []), { pid, pgid }]);
+  const targets = new Set();
+  const queue = [...(children.get(rootPid) ?? [])];
+  while (queue.length > 0) {
+    const { pid, pgid } = queue.shift();
+    if (pid === ownPid) continue;
+    targets.add(pgid !== ownGroup && pgid > 1 ? -pgid : pid);
+    queue.push(...(children.get(pid) ?? []));
+  }
+  return [...targets];
 }
 
-// Stops a child: the signal first, SIGKILL if it hasn't exited after a grace period.
+function signalTarget(target, signal) {
+  try {
+    process.kill(target, signal);
+    return true;
+  } catch {
+    return false; // already gone
+  }
+}
+
+// Tracks what this run asked to stop: whatever is still there when its grace period ends gets
+// SIGKILL, and then it is forgotten, so a reused pid or group id is never touched. `reap` does the
+// same synchronously for whatever is still in its grace period when the wrapper exits.
+export function createReaper(signal = signalTarget, graceMs = KILL_GRACE_MS) {
+  const pending = new Set();
+  const alive = (target) => signal(target, 0);
+  const finish = (entry) => {
+    if (!pending.delete(entry)) return;
+    for (const target of entry.targets) if (alive(target)) signal(target, "SIGKILL");
+  };
+  return {
+    track(targets) {
+      const entry = { targets, killAt: Date.now() + graceMs };
+      pending.add(entry);
+      setTimeout(() => finish(entry), graceMs).unref();
+    },
+    reap() {
+      const pause = new Int32Array(new SharedArrayBuffer(4));
+      for (const entry of [...pending]) {
+        while (entry.targets.some(alive) && Date.now() < entry.killAt) Atomics.wait(pause, 0, 0, 50);
+        finish(entry);
+      }
+    },
+  };
+}
+
+const reaper = createReaper();
+
+// Stops a child and its descendants: the signal now, SIGKILL for whatever is still there after the
+// grace period, even if the wrapper is exiting by then.
 function stopChild(child, signal = "SIGTERM") {
-  if (child.exitCode != null || child.signalCode != null) return;
-  child.kill(signal);
-  setTimeout(() => {
-    if (child.exitCode == null && child.signalCode == null) child.kill("SIGKILL");
-  }, KILL_GRACE_MS).unref();
+  if (child.pid == null) return;
+  const ps = spawnSync(existsSync("/bin/ps") ? "/bin/ps" : "ps", ["-A", "-o", "pid=,ppid=,pgid="], { encoding: "utf8" });
+  const targets = ps.status === 0 ? descendantTargets(child.pid, ps.stdout, process.pid) : [];
+  if (child.exitCode == null && child.signalCode == null) targets.push(child.pid);
+  for (const target of targets) signalTarget(target, signal);
+  reaper.track(targets);
 }
 
 // Why an `account/rateLimits/read` result can't be used, or null.
@@ -798,7 +852,7 @@ async function callCodex(opts) {
       note(
         `label=${opts.label} action=${result.resumed ? "resume" : "start"} thread=${record.threadId} round=${record.rounds}` +
           ` model=${call.slug}${switched} effort=${call.effort ?? "config"} sandbox=${call.sandbox}` +
-          `${formatUsage(result.outcome.usage)} log=${result.logFile}`
+          ` log=${result.logFile}`
       );
       const message = result.outcome.message;
       process.stdout.write(message.endsWith("\n") ? message : `${message}\n`);
@@ -906,7 +960,10 @@ async function main() {
 // Run the CLI only when executed directly; importing (e.g. from tests) does not.
 // Guard argv[1] — a bare dynamic import (`node -e "import(...)"`) leaves it unset.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  process.on("exit", releaseLock);
+  process.on("exit", () => {
+    reaper.reap();
+    releaseLock();
+  });
   process.stdout.on("error", (err) => (err.code === "EPIPE" ? process.exit(0) : die(err.message))); // e.g. `--list | head`
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => {

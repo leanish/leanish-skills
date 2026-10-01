@@ -9,6 +9,8 @@ import {
   buildCodexArgs,
   chooseSettings,
   codexReady,
+  createReaper,
+  descendantTargets,
   formatBudget,
   parseModelsCache,
   parseTurnOutcome,
@@ -25,7 +27,7 @@ const lines = (...events) => events.map((e) => JSON.stringify(e)).join("\n");
 
 // ---- Codex's event stream ----
 
-test("captures thread id, usage, completion and the final agent message from a successful turn", () => {
+test("captures thread id, completion and the final agent message from a successful turn", () => {
   const stdout = lines(
     { type: "thread.started", thread_id: "019eABC" },
     { type: "turn.started" },
@@ -36,7 +38,6 @@ test("captures thread id, usage, completion and the final agent message from a s
   const out = parseTurnOutcome(stdout, "");
   assert.equal(out.threadId, "019eABC");
   assert.equal(out.message, "the answer"); // not the reasoning item
-  assert.equal(out.usage.input_tokens, 100);
   assert.equal(out.completed, true);
   assert.equal(out.error, "");
 });
@@ -86,7 +87,7 @@ test("only the last turn counts: a later failure undoes an earlier completion, a
   });
 });
 
-test("takes the first thread id and the last usage/message; ignores non-JSON noise", () => {
+test("takes the first thread id and the last message; ignores non-JSON noise", () => {
   const stdout = [
     "Reading additional input from stdin...",
     lines(
@@ -102,7 +103,6 @@ test("takes the first thread id and the last usage/message; ignores non-JSON noi
   const out = parseTurnOutcome(stdout, "");
   assert.equal(out.threadId, "first");
   assert.equal(out.message, "newest");
-  assert.equal(out.usage.input_tokens, 2);
 });
 
 // ---- model and effort ----
@@ -195,6 +195,62 @@ test("a record needs a thread id and a model, and well-typed optional fields", (
   assert.equal(recordProblem({ threadId: "t", model: "sol", cwd: [] }), "cwd is not a string");
   assert.equal(recordProblem({ threadId: "t", model: "sol", lastStatus: 17 }), 'unknown lastStatus "17"');
   assert.equal(recordProblem([]), "not a JSON object");
+});
+
+test("descendants in their own process group are signalled as a group, the rest one by one", () => {
+  const ps = [
+    "  100     1   100", // the wrapper (own group 100)
+    "  200   100   100", // codex, in the wrapper's group
+    "  300   200   300", // a command codex started in a new group
+    "  301   300   300", //   its child
+    "  400   200   100", // an helper sharing the wrapper's group
+    "  500     1   500", // unrelated
+    "garbage",
+  ].join("\n");
+  assert.deepEqual(descendantTargets(200, ps, 100).sort((a, b) => a - b), [-300, 400]);
+  assert.deepEqual(descendantTargets(999, ps, 100), []);
+});
+
+// A fake OS for the reaper: `alive` is the set of live targets; every signal is recorded.
+function fakeSignals(alive) {
+  const sent = [];
+  const signal = (target, sig) => {
+    if (sig !== 0) sent.push([target, sig]);
+    if (sig === "SIGKILL") alive.delete(target);
+    return alive.has(target);
+  };
+  return { sent, signal };
+}
+
+test("the reaper SIGKILLs what outlives its grace period, then forgets it", async () => {
+  const alive = new Set([300]);
+  const { sent, signal } = fakeSignals(alive);
+  createReaper(signal, 20).track([300]);
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  assert.deepEqual(sent, [[300, "SIGKILL"]]);
+});
+
+test("a pid reused after its grace period is never killed on exit", async () => {
+  const alive = new Set();
+  const { sent, signal } = fakeSignals(alive);
+  const reaper = createReaper(signal, 20);
+  reaper.track([300]); // stopped politely: already gone
+  await new Promise((resolve) => setTimeout(resolve, 60));
+  alive.add(300); // the OS reuses the pid for an unrelated process
+  reaper.reap();
+  assert.deepEqual(sent, []);
+});
+
+test("on exit, the reaper waits for the grace period and SIGKILLs what is still running", () => {
+  const alive = new Set([-300, 400]);
+  const { sent, signal } = fakeSignals(alive);
+  const reaper = createReaper(signal, 100);
+  reaper.track([-300, 400]);
+  alive.delete(400); // this one stops in time
+  const startedAt = Date.now();
+  reaper.reap();
+  assert.ok(Date.now() - startedAt >= 90, "waited for the grace period");
+  assert.deepEqual(sent, [[-300, "SIGKILL"]]);
 });
 
 // ---- limits, budget and waiting ----
@@ -307,6 +363,14 @@ if (args[0] === "app-server") {
 
 const prompt = fs.readFileSync(0, "utf8");
 const n = count("counter");
+if ((readJson("plan.json")[n] || "ok") === "orphans") {
+  // Like codex's commands: each in its own process group; one of them ignores SIGTERM.
+  const { spawn } = require("child_process");
+  const start = (code) => spawn(process.execPath, ["-e", code], { detached: true, stdio: "ignore" });
+  const polite = start("setInterval(() => {}, 1000)");
+  const stubborn = start("process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)");
+  fs.writeFileSync(path.join(dir, "orphans.json"), JSON.stringify([polite.pid, stubborn.pid]));
+}
 const scenario = readJson("plan.json")[n] || "ok";
 fs.appendFileSync(path.join(dir, "calls.jsonl"), JSON.stringify({ args, prompt, cwd: process.cwd(), at: Date.now() }) + "\\n");
 fs.writeFileSync(path.join(dir, "exec.pid"), String(process.pid));
@@ -338,7 +402,7 @@ function finish() {
   out({ type: "turn.completed", usage: { input_tokens: 10, output_tokens: 2 } });
   process.exit(0);
 }
-if (scenario === "slow" || scenario === "break-record") setTimeout(finish, 3000);
+if (scenario === "slow" || scenario === "break-record" || scenario === "orphans") setTimeout(finish, 3000);
 else finish();
 `;
 
@@ -615,6 +679,22 @@ test("a stopped call kills codex, records the failure and releases the lock", as
   assert.notEqual(await done, 0);
   assert.equal(s.record("task").lastStatus, "failed");
   assert.equal(alive(s.pidOf("exec.pid")), false);
+  assert.equal(existsSync(s.lockFile("task")), false);
+});
+
+test("a stopped call also stops the commands codex started in their own process groups", async () => {
+  const s = sandbox();
+  s.plan("orphans");
+  const child = s.start(["task", "--message", "review"]);
+  const done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
+  const orphansFile = join(s.root, "orphans.json");
+  await waitFor(() => existsSync(orphansFile) && existsSync(s.recordFile("task")));
+  await new Promise((resolve) => setTimeout(resolve, 200)); // let the stubborn one install its handler
+  const [polite, stubborn] = JSON.parse(readFileSync(orphansFile, "utf8"));
+  child.kill("SIGTERM");
+  assert.notEqual(await done, 0);
+  assert.equal(alive(polite), false);
+  assert.equal(alive(stubborn), false); // SIGKILLed after the grace period, before the wrapper exited
   assert.equal(existsSync(s.lockFile("task")), false);
 });
 

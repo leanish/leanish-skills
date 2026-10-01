@@ -3,7 +3,7 @@ name: four-eyes
 description: >-
   Work with Codex (the OpenAI CLI), also called Chatz, as a second agent: it
   reviews Claude's plan, implementation and final state, and both argue each point
-  in one persistent Codex thread until they agree. Sol, Astra and Luna name Codex
+  in one persistent Codex thread until each point is settled. Sol, Astra and Luna name Codex
   model families (always the newest version). Claude plans and implements by
   default; Codex plans or implements only when the user asks. Trigger on any
   question or request where a second opinion helps: a diff, a question about code,
@@ -14,7 +14,7 @@ description: >-
 
 # Four Eyes
 
-Named after the four-eyes principle: nothing is done until two agents have looked at it.
+Named after the four-eyes principle: nothing important is done until two agents have looked at it.
 **Chatz** is Codex, the OpenAI CLI, working as a second agent next to Claude.
 **Sol**, **Astra** and **Luna** are its model families; naming one means its
 newest version.
@@ -75,12 +75,14 @@ implementing, then Claude combining the two, is only on request (see EXAMPLES.md
 - Put the problem, the diff and the criteria in the message, and your own position
   in a separate file. Ask Codex to write its findings before opening that file.
 - What you report (tests pass, a file says X) is a claim; Codex checks the
-  important ones itself.
+  important ones itself, with checks that fit its sandbox: a read-only call can't
+  run builds that write, so Claude runs them and shares the output.
 - Trivial requests Claude handles directly. Small mechanical changes may skip
   planning; Sol reviews the result and final state in one call.
 - Unless the user authorizes it, don't give Codex private data or let it read
-  private files. Use public sources or clearly labeled synthetic examples; run
-  sanitized reviews outside private project directories.
+  private files, and ask it to pass the same limits to any sub-agent. Use public
+  sources or clearly labeled synthetic examples; run sanitized reviews outside
+  private project directories.
 - Batch findings; no rounds just to say "ok". An agreed, concrete correction is its
   own plan. When the budget is low, send one self-contained request that says not
   to ask questions.
