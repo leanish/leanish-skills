@@ -5,12 +5,10 @@ description: >-
   reviews Claude's plan, implementation and final state, and both argue each point
   in one persistent Codex thread until they agree. Sol, Astra and Luna name Codex
   model families (always the newest version). Claude plans and implements by
-  default; Codex plans or implements only when the user asks. Trigger when the
-  user wants Codex involved or agreement with it: "ask Chatz", "check this with
-  Codex", "have Sol/Astra/Luna review it", "let Codex implement", "preguntale a
-  Chatz", "validá con Sol", "que Astra lo revise", or /chatz-consensus. Do NOT
-  trigger on a plain "review this" or "second opinion" that names neither Codex,
-  Chatz nor one of its models.
+  default; Codex plans or implements only when the user asks. Trigger whenever the
+  user asks for a review or a second opinion, or wants Codex involved: "review
+  this", "second opinion", "ask Chatz", "check this with Codex", "have
+  Sol/Astra/Luna review it", "let Codex implement", or /chatz-consensus.
 ---
 
 # Chatz Consensus
@@ -31,6 +29,9 @@ newest version.
    end state against the original request: everything asked is done, the relevant
    checks ran, docs match, open points are listed. It can share a call with step 3
    when both look at the same state; any later edit reopens it.
+
+A review or a question with no change is step 1 alone: both look independently,
+settle, and tell the user where you agree and where you don't.
 
 Settle each step before the next. Corrections and follow-ups, including later
 requests from the user, go through the same loop; if you changed something before
