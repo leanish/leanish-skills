@@ -1,6 +1,6 @@
-# Chatz Consensus — worked examples
+# Four Eyes — worked examples
 
-`SCRIPT=<absolute path to this skill>/scripts/chatz-consensus.mjs`, where `<absolute path to this skill>` is the
+`SCRIPT=<absolute path to this skill>/scripts/four-eyes.mjs`, where `<absolute path to this skill>` is the
 "Base directory for this skill:" path shown when the skill is invoked. One label for the whole task, so Codex keeps
 every round.
 
