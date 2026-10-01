@@ -36,8 +36,8 @@ reasons, and add what I missed."*
 
 **Review and final check** (same label, same state):
 
-> **Round 1** — Codex reads the tests and the results Claude ran and attached, and
-> finds no test for the idempotency key. Claude adds it (an agreed, concrete correction is its own plan).
+> **Round 1** — Codex runs the payments tests (`--write`, changing nothing but build
+> output) and finds no test for the idempotency key. Claude adds it (an agreed, concrete correction is its own plan).
 > **Round 2** — Codex: the diff is correct, the request is met, tests pass.
 > **Settled.**
 
