@@ -498,12 +498,13 @@ export function createReaper(signal = signalTarget, graceMs = KILL_GRACE_MS) {
 const reaper = createReaper();
 
 // Stops a child and its descendants: the signal now, SIGKILL for whatever is still there after the
-// grace period, even if the wrapper is exiting by then.
-function stopChild(child, signal = "SIGTERM") {
-  if (child.pid == null) return;
+// grace period, even if the wrapper is exiting by then. A child that has already exited is left
+// alone: its pid may belong to another process by now.
+export function stopChild(child, signal = "SIGTERM") {
+  if (child.pid == null || child.exitCode != null || child.signalCode != null) return;
   const ps = spawnSync(existsSync("/bin/ps") ? "/bin/ps" : "ps", ["-A", "-o", "pid=,ppid=,pgid="], { encoding: "utf8" });
   const targets = ps.status === 0 ? descendantTargets(child.pid, ps.stdout, process.pid) : [];
-  if (child.exitCode == null && child.signalCode == null) targets.push(child.pid);
+  targets.push(child.pid);
   for (const target of targets) signalTarget(target, signal);
   reaper.track(targets);
 }
@@ -541,6 +542,7 @@ export function readRateLimits(timeoutMs = API_TIMEOUT_MS) {
       stopChild(child);
     };
     const settle = () => {
+      clearTimeout(timer);
       if (currentChild === child) currentChild = null;
       if (answer?.value) resolve(answer.value);
       else reject(new Error(answer?.error ?? "codex app-server exited without answering"));

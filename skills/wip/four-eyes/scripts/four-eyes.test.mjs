@@ -16,6 +16,7 @@ import {
   parseTurnOutcome,
   rateLimitsProblem,
   readRateLimits,
+  stopChild,
   recordProblem,
   resolveEffort,
   resolveModel,
@@ -758,6 +759,30 @@ test("reading the limits times out on a silent server and fails on a crashed one
     await assert.rejects(readRateLimits(5000), /exited without answering/);
     s.limits(READY);
     assert.deepEqual(await readRateLimits(5000), READY);
+  } finally {
+    Object.assign(process.env, saved);
+  }
+});
+
+test("stopping a child that has already exited signals nothing, even if its pid is reused", async () => {
+  const other = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  stopChild({ pid: other.pid, exitCode: 0, signalCode: null }); // an exited child whose pid is now `other`'s
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.equal(alive(other.pid), true);
+  other.kill("SIGKILL");
+});
+
+test("a crashed limits server leaves no timer behind", async () => {
+  const s = sandbox();
+  const saved = { PATH: process.env.PATH, FAKE_CODEX_DIR: process.env.FAKE_CODEX_DIR };
+  Object.assign(process.env, { PATH: s.bin, FAKE_CODEX_DIR: s.root });
+  try {
+    s.limits("crash");
+    const timers = () => process.getActiveResourcesInfo().filter((r) => r === "Timeout").length;
+    const before = timers();
+    await assert.rejects(readRateLimits(60_000), /exited without answering/);
+    assert.equal(timers(), before);
   } finally {
     Object.assign(process.env, saved);
   }
