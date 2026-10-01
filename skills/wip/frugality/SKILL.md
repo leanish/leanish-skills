@@ -9,6 +9,7 @@ description: Optimize agent execution cost.
 - Look for batch operations or small scripts when possible.
 - Delegate to a sub-agent running the latest available Luna model at its maximum supported effort, using `fork_turns=none`, when its expected total execution cost—including context transfer, coordination, and verification—is lower than completing the work directly.
 - When using a cheaper sub-agent, the main-agent should still perform the planning and final verification.
+- If Luna or sub-agents aren't available, do the work yourself.
 - Extra waiting time is acceptable when it reduces cost.
 - Independent research can be delegated as bounded questions.
 - Before delegating repetitive execution of an unfamiliar workflow, the main agent should verify that the procedure works end to end.

@@ -2,9 +2,9 @@
 name: four-eyes
 description: >-
   Work with Codex (the OpenAI CLI), also called Chatz, as a second agent: it
-  reviews Claude's plan, implementation and final state, and both argue each point
-  in one persistent Codex thread until they agree. Sol, Astra and Luna name Codex
-  model families (always the newest version). Claude plans and implements by
+  reviews Claude's plan, implementation and final state, and both settle each
+  point in one persistent Codex thread. Sol, Astra and Luna name Codex model
+  families (always the newest version). Claude plans and implements by
   default; Codex plans or implements only when the user asks. Trigger on any
   question or request where a second opinion helps: a diff, a question about code,
   a law or a past decision, a plan, a change; or when the user wants Codex involved
@@ -14,7 +14,7 @@ description: >-
 
 # Four Eyes
 
-Named after the four-eyes principle: nothing is done until two agents have looked at it.
+Named after the four-eyes principle: nothing important is done until two agents have looked at it.
 **Chatz** is Codex, the OpenAI CLI, working as a second agent next to Claude.
 **Sol**, **Astra** and **Luna** are its model families; naming one means its
 newest version.
@@ -60,13 +60,14 @@ implementing, then Claude combining the two, is only on request (see EXAMPLES.md
 
 - **One label per task, reused**: it holds Codex's thread, so send only what's new.
   Open a second label only for separate work running in parallel.
-- **Another model = same label, one call**: `--model astra` or `--model luna`, plus
-  `--effort` if needed. The next call is back on the label's model.
-- Models: **Sol** at high for everything (default). **Astra**, at medium, when the
-  user asks or to break a tie. **Luna**, at its highest effort, only when named.
-  The user can override any model or effort.
-- Every call is read-only unless it passes `--write`. Codex works in the directory
-  you call from. stdout is its reply.
+- **Models**: **Sol** at high for everything (default); **Astra**, at medium, when
+  the user asks or to break a tie; **Luna**, at its highest effort, only when named.
+  Another model is `--model astra|luna` (plus `--effort` if needed) on the same
+  label, for one call. The user can override any model or effort.
+- Every call is read-only unless it passes `--write`: for implementing, or for
+  builds and tests that write (then tell Codex to change nothing beyond build
+  output); repeat a call blocked by the sandbox with it. Codex works in the
+  directory you call from. stdout is its reply.
 - `--budget` shows Codex's current usage, resets and credits without a model call.
   `--help` has the rest (`--list`, `--show`, `--reset`, `--trace`).
 
@@ -79,8 +80,9 @@ implementing, then Claude combining the two, is only on request (see EXAMPLES.md
 - Trivial requests Claude handles directly. Small mechanical changes may skip
   planning; Sol reviews the result and final state in one call.
 - Unless the user authorizes it, don't give Codex private data or let it read
-  private files. Use public sources or clearly labeled synthetic examples; run
-  sanitized reviews outside private project directories.
+  private files, and ask it to pass the same limits to any sub-agent. Use public
+  sources or clearly labeled synthetic examples; run sanitized reviews outside
+  private project directories.
 - Batch findings; no rounds just to say "ok". An agreed, concrete correction is its
   own plan. When the budget is low, send one self-contained request that says not
   to ask questions.
@@ -98,6 +100,6 @@ both positions to the user. Never claim an agreement you didn't reach.
 The error names the log (`[trace: …]`). Check it and what Codex already changed, so
 a retry doesn't redo it, then retry once. For a usage limit or missing credits,
 retry with `--wait` in the background: it checks Codex's limits every minute (no
-model call) and resumes the same thread once Codex is available. If it still fails, stop and tell the user the exact error; don't carry on
-alone. A label locked by a call that died has to be unlocked by hand (the error
+model call) and resumes the same thread once Codex is available. If it still
+fails, stop and tell the user the exact error; don't carry on alone. A label locked by a call that died has to be unlocked by hand (the error
 says how).
