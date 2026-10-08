@@ -54,3 +54,8 @@ Full attribution, copyright notices, and license text are in
 [skills/third-party/NOTICES.md](./skills/third-party/NOTICES.md); see also
 [skills/third-party/README.md](./skills/third-party/README.md). Each skill directory is standalone
 (its own `SKILL.md`) and can also be installed individually.
+
+## Supply-chain coverage
+
+The gate inventories GitHub Actions referenced by this repository's workflows. This repository has no npm lockfiles
+or Gradle builds, and the gate does not inventory Python dependencies or packages referenced inside skill content.
