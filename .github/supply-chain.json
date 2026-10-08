@@ -1,0 +1,11 @@
+{
+  "npm": {
+    "lockfiles": [],
+    "registries": ["https://registry.npmjs.org"]
+  },
+  "gradle": { "builds": [] },
+  "releaseAgeDays": 7,
+  "ownPackages": {
+    "GitHub Actions": { "owners": ["leanish"] }
+  }
+}
