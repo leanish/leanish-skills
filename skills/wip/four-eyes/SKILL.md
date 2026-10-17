@@ -5,8 +5,9 @@ description: >-
   agent, Codex (the OpenAI CLI, also called Chatz), review the plan, the
   implementation and the final state, settling each point in one persistent
   Codex thread. Sol, Astra and Luna name Codex models; Haiku, Claude's
-  cheapest. Trigger when the user wants Codex involved ("review this", "ask Chatz", "check this with Codex",
-  "have Sol/Astra/Luna review it", "let Codex implement", /four-eyes).
+  cheapest. Trigger when the user wants Codex involved ("review this", "ask
+  Chatz", "check this with Codex", "have Sol/Astra/Luna review it", "let Codex
+  implement", /four-eyes).
 ---
 
 # Four Eyes
