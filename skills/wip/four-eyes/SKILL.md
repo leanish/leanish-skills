@@ -2,12 +2,10 @@
 name: four-eyes
 description: >-
   Gain more certainty that what Claude does is right by having an external
-  agent, Codex (the OpenAI CLI, also called Chatz), check the plan, the
+  agent, Codex (the OpenAI CLI, also called Chatz), review the plan, the
   implementation and the final state, settling each point in one persistent
-  Codex thread. Cheap Haiku sub-agents look first, so a Codex round-trip isn't
-  spent on what they can catch. Sol, Astra and Luna name Codex model families,
-  Haiku names Claude's cheapest model (always the newest version). Trigger on
-  any question or request where a second opinion helps: a diff, a question
+  Codex thread. Sol, Astra and Luna name Codex models; Haiku, Claude's
+  cheapest. Trigger on any question or request where a second opinion helps: a diff, a question
   about code, a law or a past decision, a plan, a change; or when the user
   wants Codex involved ("review this", "ask Chatz", "check this with Codex",
   "have Sol/Astra/Luna review it", "let Codex implement", /four-eyes).
@@ -52,8 +50,8 @@ was skipped and why, and what is unresolved. Releases follow
 ## Roles
 
 By default the current Claude model (usually Opus) plans and implements, and Sol
-reviews. The user can swap them: Sol plans or implements (`--write`) and Claude
-reviews. Swapping automatically by available budget is a separate skill's job.
+reviews. The user can swap either step: Sol plans, implements (`--write`) or
+both, and whoever didn't do a step reviews it.
 
 When Sol implements, give it a self-contained brief: verified facts apart from
 hypotheses, the exact paths it may read and write, whether it may use the
@@ -99,6 +97,7 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
   end. A task belongs to the session that started it; a forked session never
   stops its parent's tasks.
 - `--budget` shows Codex's current usage, resets and credits without a model call.
+  Re-check it when picking pending work back up; `--wait` is the fallback.
   `--help` has the rest (`--list`, `--show`, `--reset`, `--trace`).
 
 ## Independent, private and cheap

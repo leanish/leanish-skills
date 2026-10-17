@@ -48,7 +48,7 @@ Report: #1, #2, #4 done; #3 skipped as cosmetic; nothing unresolved.
 
 ---
 
-## B — the user swaps the roles: Sol plans and implements, Claude reviews
+## B — the user swaps the roles: Sol plans or implements, Claude reviews
 
 **Plan** (read-only, as every call without `--write`):
 
