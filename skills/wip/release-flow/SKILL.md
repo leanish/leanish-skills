@@ -27,19 +27,21 @@ Review each candidate in order. Start each step only if the previous step found
 no blocker. Fix a blocker on main through its own PR, then tag a new candidate
 and start again at step 1.
 
-1. **Cheap reviewers.** Run two read-only reviewers in parallel on
-   `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
+1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run two read-only
+   reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
    Follow [four-eyes](../four-eyes/SKILL.md): a checklist reviewer checks each
    changed behavior against fixed risky cases, with same/better/worse evidence;
    a gap-hunter gets only the diff and "What does this break that worked before,
    or let through?" Give the gap-hunter no checklist or implementation explanation.
-2. **Unprimed review.** Whoever didn't implement reviews the whole state on a
-   fresh thread or label. Give only what to review, not where to look or what
+2. **Unprimed review.** Sol (or whoever didn't implement) reviews the whole state
+   on a fresh thread or label. Give only what to review, not where to look or what
    step 1 found.
-3. **Final critical pass.** Only on a candidate step 2 found clean, ask a stronger,
-   more expensive reviewer on that same thread. Let it see and challenge step
-   2's findings and look for what was missed. Ask it to check each finding against
-   the deployed release.
+3. **Last review, by Astra.** Only when every check on the candidate passed (real
+   runs, CI, steps 1 and 2 found no blocker): Astra, on Sol's thread from step 2
+   (`--model astra`), for one last review. It sees and challenges Sol's findings,
+   looks for what was missed, and checks each finding against the deployed
+   release. Astra costs much more than Sol, so it never runs on a candidate that
+   still has a known blocker.
 
 Run the final unprimed review on the last candidate, before the release PR,
 release tag and repins. Never defer it until after the release.

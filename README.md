@@ -30,9 +30,10 @@ Skills live under `skills/<category>/<name>/SKILL.md`. Two categories:
 
 Our first-party skills, still being shaped. New leanish skills land here too.
 
-- [four-eyes](./skills/wip/four-eyes/SKILL.md) — Codex ("Chatz", on Sol, Astra or Luna) as a
-  second agent that reviews the plan, the implementation and the final state, debating each point until
-  both agents settle; roles switch when Claude's plan usage is high or the user asks.
+- [four-eyes](./skills/wip/four-eyes/SKILL.md) — more certainty that the work is right from an
+  external agent: Codex ("Chatz", on Sol, Astra or Luna) reviews the plan, the implementation and the final
+  state, debating each point until both agents settle, after cheap Haiku sub-agents look first. The user
+  can swap who implements and who reviews.
   Claude Code only: it calls Codex through its wrapper, so it needs Node.js and a working Codex CLI.
 - [release-flow](./skills/wip/release-flow/SKILL.md) — validate release candidates, finish release
   PRs, publish and repin adopters. Works in both Claude Code and Codex.

@@ -34,13 +34,13 @@ reasons, and add what I missed."*
 
 **Implement.** Claude makes the three changes.
 
-**Cheap reviews.** Run the checklist reviewer and gap-hunter below in parallel,
-read-only. Claude judges their findings before asking Codex to review.
+**Haiku reviews.** Run the checklist reviewer and gap-hunter (D) in parallel,
+read-only. Claude judges their findings and fixes what's real before asking Sol.
 
 **Review and final check** (same label, same state):
 
 > **Round 1** — Codex runs the payments tests (`--write`, changing nothing but build
-> output) and finds no test for the idempotency key. Claude adds it (an agreed, concrete correction is its own plan) and runs the cheap reviews on the new diff.
+> output) and finds no test for the idempotency key. Claude adds it (an agreed, concrete correction is its own plan) and runs the Haiku reviews on the new diff.
 > **Round 2** — Codex: the diff is correct, the request is met, tests pass.
 > **Settled.**
 
@@ -48,11 +48,7 @@ Report: #1, #2, #4 done; #3 skipped as cosmetic; nothing unresolved.
 
 ---
 
-## B — Codex implements when Claude's usage is high or the user asks
-
-At 90% of Claude's own 5-hour or weekly plan window, hand implementation to
-Codex. Claude keeps logins, keychain work and judgment calls. Finish work already
-handed off in Codex, even if Claude's budget later recovers.
+## B — the user swaps the roles: Sol plans and implements, Claude reviews
 
 **Plan** (read-only, as every call without `--write`):
 
@@ -88,21 +84,19 @@ node "$SCRIPT" cache-ttl --write --prompt-file /tmp/cc-cache-brief.md
 
 Use readable-path allowlists. Never list private folders as forbidden paths.
 
-**Review and final check** by Claude, since Codex implemented: run both cheap
+**Review and final check** by Claude, since Codex implemented: run both Haiku
 reviewers. The checklist reviewer finds the TTL isn't reset on update. Claude
 reads the relevant code, confirms the finding and sends it with a fix. Codex fixes
-it and adds a test (one `--write` call). Repeat cheap reviews on the new diff.
+it and adds a test (one `--write` call). Repeat the Haiku reviews on the new diff.
 Claude judges them and checks the end state against the request: done.
 
-**Astra**, only if the user asks for an extra look (same thread, one call):
+**Astra**, only because the user asked for an extra look (same thread, one call):
 
 ```
 node "$SCRIPT" cache-ttl --model astra --message "Take an extra look at the end state against the original request. List anything missing or wrong."
 ```
 
 The next call without `--model` is back on Sol.
-For a final validation without a user request, use Astra only after Sol found the
-state clean. Never call Astra right after Sol found a blocker; fix it first.
 
 ---
 
@@ -133,10 +127,10 @@ reports; `--budget` shows the same numbers beforehand.
 
 ---
 
-## D — two cheap reviewers and a mechanical writer
+## D — the Haiku reviewers and a mechanical writer
 
-Run both reviewers read-only in parallel. In Claude Code, use Haiku at high
-effort, with each context under about 100K tokens. Pass the readable-path
+Run both reviewers read-only in parallel, as fresh Haiku sub-agents at high
+effort, each under about 100K tokens of context. Pass the readable-path
 allowlist to both. Don't prime either with the implementer's conclusions.
 
 **Checklist reviewer prompt:**
