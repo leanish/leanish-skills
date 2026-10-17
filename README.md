@@ -32,8 +32,10 @@ Our first-party skills, still being shaped. New leanish skills land here too.
 
 - [four-eyes](./skills/wip/four-eyes/SKILL.md) — Codex ("Chatz", on Sol, Astra or Luna) as a
   second agent that reviews the plan, the implementation and the final state, debating each point until
-  both agents settle; it plans or implements when asked. Claude Code only: it calls Codex through its
-  wrapper, so it needs Node.js and a working Codex CLI.
+  both agents settle; roles switch when Claude's plan usage is high or the user asks.
+  Claude Code only: it calls Codex through its wrapper, so it needs Node.js and a working Codex CLI.
+- [release-flow](./skills/wip/release-flow/SKILL.md) — validate release candidates, finish release
+  PRs, publish and repin adopters. Works in both Claude Code and Codex.
 - [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
   Luna only when that is cheaper overall, and verify with the smallest sufficient checks. Codex
   only: it delegates to Codex sub-agents running Luna.
