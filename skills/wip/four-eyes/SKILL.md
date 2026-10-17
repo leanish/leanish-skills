@@ -96,8 +96,8 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
   directory you call from. stdout is its reply.
 - Run calls as background tasks of the session (Bash `run_in_background`), not
   detached with `nohup`, so the user sees them and the session is told when they
-  end. A task belongs to the session that started it; a forked session never
-  stops its parent's tasks.
+  end. Detach only around a restart, with a watcher. A task belongs to the
+  session that started it; a forked session never stops its parent's tasks.
 - `--budget` shows Codex's current usage, resets and credits without a model call.
   Re-check it when picking pending work back up; `--wait` is the fallback.
   `--help` has the rest (`--list`, `--show`, `--reset`, `--trace`).
