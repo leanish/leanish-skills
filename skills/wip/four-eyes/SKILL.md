@@ -5,8 +5,8 @@ description: >-
   agent, Codex (the OpenAI CLI, also called Chatz), review the plan, the
   implementation and the final state, settling each point in one persistent
   Codex thread. Sol, Astra and Luna name Codex models; Haiku, Claude's
-  cheapest. Trigger when the user wants Codex involved ("review this", "ask
-  Chatz", "check this with Codex", "have Sol/Astra/Luna review it", "let Codex
+  cheapest. Trigger when the user wants Codex involved ("have Codex review
+  this", "ask Chatz", "check this with Codex", "have Sol/Astra/Luna review it", "let Codex
   implement", /four-eyes).
 ---
 
@@ -40,7 +40,8 @@ sub-agents (not external). **Chatz** is Codex working as the second agent.
 A review or a question with no change is step 1 alone: both look independently,
 settle, and tell the user where you agree and where you don't.
 
-Trivial requests (a quick question, a one-line fix) Claude handles directly.
+Trivial requests (a quick question, a typo) Claude handles directly, unless the
+user asks for Codex.
 
 Settle each step before the next. Corrections and follow-ups, including later
 requests from the user, go through the same loop; if you changed something before
@@ -110,7 +111,8 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
 - Unless the user authorizes it, don't give Codex private data. Write the limits
   as an allowlist of paths it may read; naming private folders, even to forbid
   them, leaks them. Ask it to pass the same limits to any sub-agent. Use public
-  sources or clearly labeled synthetic examples.
+  sources or clearly labeled synthetic examples, and run sanitized reviews
+  outside private project directories: Codex starts in the calling directory.
 - Batch findings; no rounds just to say "ok". An agreed, concrete correction is its
   own plan. A narrow, unlikely edge case is fixed only if cheap; otherwise note it
   and move on. Wrong data shown to users always counts.

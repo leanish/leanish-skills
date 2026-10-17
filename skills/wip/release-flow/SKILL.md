@@ -33,8 +33,9 @@ and start again at step 1.
    changed behavior against fixed risky cases, with same/better/worse evidence;
    a gap-hunter gets only the diff and "What does this break that worked before,
    or let through?" Give the gap-hunter no checklist or implementation explanation.
-2. **Unprimed review.** Sol (or whoever didn't implement) reviews the whole state
-   on a fresh thread or label. Give only what to review, not where to look or what
+2. **Unprimed review.** Sol reviews the whole state on a fresh thread or label,
+   even if Sol implemented some of the release (the fresh thread keeps it
+   independent). Give only what to review, not where to look or what
    step 1 found.
 3. **Last review, by Astra.** Only when every check on the candidate passed (real
    runs, CI, steps 1 and 2 found no blocker): Astra, on Sol's thread from step 2
