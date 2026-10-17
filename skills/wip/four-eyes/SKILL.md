@@ -88,8 +88,9 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
 - **One label per task, reused**: it holds Codex's thread, so send only what's new.
   Open a second label only for separate work running in parallel.
 - **Sol** at high for everything. **Astra** to break a tie (see Settling), and
-  **Astra** or **Luna** when the user or a skill asks for them: `--model astra|luna` (plus `--effort` if needed) on the
-  same label, for one call. The user can override any model or effort.
+  **Astra** or **Luna** when the user or a skill asks for them:
+  `--model astra|luna` (plus `--effort` if needed) on the same label, for one
+  call. The user can override any model or effort.
 - Every call is read-only unless it passes `--write`: for implementing, or for
   builds and tests that write (then tell Codex to change nothing beyond build
   output); repeat a call blocked by the sandbox with it. Codex works in the
