@@ -40,6 +40,8 @@ sub-agents (not external). **Chatz** is Codex working as the second agent.
 A review or a question with no change is step 1 alone: both look independently,
 settle, and tell the user where you agree and where you don't.
 
+Trivial requests (a quick question, a one-line fix) Claude handles directly.
+
 Settle each step before the next. Corrections and follow-ups, including later
 requests from the user, go through the same loop; if you changed something before
 Codex saw the plan, tell the user. At the end, tell the user what was done, what
