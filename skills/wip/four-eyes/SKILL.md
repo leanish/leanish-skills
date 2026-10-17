@@ -87,8 +87,8 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
 
 - **One label per task, reused**: it holds Codex's thread, so send only what's new.
   Open a second label only for separate work running in parallel.
-- **Sol** at high for everything. **Astra** and **Luna** only when the user or a
-  skill asks for them: `--model astra|luna` (plus `--effort` if needed) on the
+- **Sol** at high for everything. **Astra** to break a tie (see Settling), and
+  **Astra** or **Luna** when the user or a skill asks for them: `--model astra|luna` (plus `--effort` if needed) on the
   same label, for one call. The user can override any model or effort.
 - Every call is read-only unless it passes `--write`: for implementing, or for
   builds and tests that write (then tell Codex to change nothing beyond build
@@ -119,8 +119,9 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
 
 For each open point, concede or rebut with a reason; reopen a settled point only if
 something material changes. Stop when nothing is open or the arguments repeat: up
-to 5 rounds per debate (10 if still converging). If you don't settle, report both
-positions to the user. Never claim an agreement you didn't reach.
+to 5 rounds per debate (10 if still converging). If you don't settle, bring in
+Astra on the same label (`--model astra`); if that doesn't settle it either, report
+both positions to the user. Never claim an agreement you didn't reach.
 
 ## If a call fails
 
