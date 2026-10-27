@@ -1,41 +1,58 @@
 ---
 name: four-eyes
 description: >-
-  Gain more certainty that what Claude does is right by having an external
-  agent, Codex (the OpenAI CLI, also called Chatz), review the plan, the
-  implementation and the final state, settling each point in one persistent
-  Codex thread. Sol, Astra and Luna name Codex models; Haiku, Claude's
-  cheapest. Trigger when the user wants Codex involved ("have Codex review
-  this", "ask Chatz", "check this with Codex", "have Sol/Astra/Luna review
-  it", "let Codex implement", /four-eyes).
+  Use in Claude Code when the user asks for an external Codex review or
+  implementation ("ask Chatz", "que Sol lo revise", "have Astra review it",
+  "let Codex implement", /four-eyes). Keep review independent, bounded and
+  tied to the final state. Requires Node.js and an authenticated Codex CLI.
 ---
 
 # Four Eyes
 
 The goal is more certainty that what we do is right, from an agent outside
 Claude. The name comes from the four-eyes principle, but there are usually more
-eyes: cheap Haiku sub-agents for specific checks first, then one Sol review that
-carries the weight. Haiku goes first because it costs a fraction of Sol: what it
-catches doesn't cost a Sol round-trip, and Sol's review isn't spent on the obvious.
+eyes: optional Haiku sub-agents for specific checks first, then one Sol review
+that carries the weight. Use the extra reviewers when their likely findings
+justify context transfer and verification; lower model cost alone proves no saving.
 
 **Models**, always the newest version: **Sol**, **Astra** and **Luna** are Codex
 (OpenAI) model families; **Haiku** is Claude's cheapest model, run as Claude Code
 sub-agents (not external). **Chatz** is Codex working as the second agent.
 
+## Scope and budget
+
+Before review, identify the request, allowed paths, actual target branch and
+merge base. Record HEAD and any uncommitted changes, including untracked files.
+Do not include, stash or discard unrelated work. The reviewer must inspect the
+same snapshot; don't edit scoped files while it runs.
+
+- Allow **3 external review rounds total per task**, across plan, implementation
+  and final check. A round is a reviewer pass, not an implementation call.
+- Extend to **5 total** only for an evidenced security, permissions, data-loss
+  or state/concurrency risk, or the user's explicit request for additional rounds.
+  Switching models, labels, accounts or sessions does not reset the budget.
+- The first pass covers its whole scope. Later passes cover changed behavior and
+  open findings. Purely editorial fixes need no new pass; changes to instructions,
+  contracts or documented behavior do, even when the files are Markdown.
+- One external reviewer at a time. Reviewers must not launch their own reviewers
+  or sub-agents. The owner may run the optional Haiku preflight below.
+
 ## The loop
 
 1. **Plan.** The planner writes numbered items (claim, reason, worth doing: yes/no).
    The other side does its own pass, agrees or disagrees with reasons, and adds
-   what's missing. Any logic change or design gets this review; only trivial or
-   mechanical edits skip it.
+   what's missing. Review plans separately when they change contracts, permissions
+   or architecture, or the user asks. A focused fix with an established approach
+   can combine its plan with the implementation review.
 2. **Implement** the agreed items.
-3. **Review.** The Haiku reviewers (below) look first; fix what's real. Then
+3. **Review.** When useful, the Haiku reviewers (below) look first; fix what's real. Then
    whoever didn't implement reviews the diff, or before/after evidence for changes
    outside Git.
 4. **Final check.** Before saying it's done, whoever didn't implement checks the
    end state against the original request: everything asked is done, the relevant
-   checks ran, docs match, open points are listed. It can share a call with step 3
-   when both look at the same state; any later edit reopens it.
+   checks ran, docs match, open points are listed. Combine it with step 3 when
+   reviewing the same state. Later behavior changes reopen affected findings
+   and checks within the remaining budget.
 
 A review or a question with no change is step 1 alone: both look independently,
 settle, and tell the user where you agree and where you don't.
@@ -43,11 +60,27 @@ settle, and tell the user where you agree and where you don't.
 Trivial requests (a quick question, a typo) Claude handles directly, unless the
 user asks for Codex.
 
-Settle each step before the next. Corrections and follow-ups, including later
-requests from the user, go through the same loop; if you changed something before
-Codex saw the plan, tell the user. At the end, tell the user what was done, what
-was skipped and why, and what is unresolved. Releases follow
-[release-flow](../release-flow/SKILL.md).
+Settle a separately reviewed plan before implementing it. An agreed correction
+is its own plan. A new user request can start a new task; continuing the same
+change cannot. Releases follow the project's release procedure, or `release-flow`
+when installed. For release candidates, `release-flow`'s per-candidate budget
+and fresh-thread review exception replace this skill's task-wide budget and
+non-implementer rule; its required candidate review sequence still applies.
+
+## Evidence and continuity
+
+Keep a compact record in the existing task notes or an ignored local file:
+scope/base, reviewed snapshot, rounds used, reviewer/model, and findings with
+stable IDs, severity, evidence and disposition (open, fixed, rebutted or deferred).
+Record commands and observed results, not just another agent's claim. For a bug,
+prefer a reproduction that fails before and passes after; run the repository's
+required checks. Report missing or pre-failing checks separately. A command that
+started, timed out or lost its output has no successful result.
+
+Before a long wait or handoff, record the label/thread, live task handles and
+output paths, the next action and existing authorization. On resume, inspect
+outputs and current Git/PR state before rerunning work. Keep private context out
+of commits and PRs. Do not update personal memory unless the user asks.
 
 ## Roles
 
@@ -63,7 +96,10 @@ and tested. Both implementing, then Claude combining the two, is only on request
 
 ## Haiku reviewers
 
-Two read-only Haiku sub-agents review each change in parallel:
+For broad changes or distinct risks, run these two read-only Haiku sub-agents
+in parallel, once before the external implementation review. For a narrow change,
+use one targeted check or skip the preflight and explain why. Repeat only the
+affected check when a later change creates a material new risk.
 
 - **Checklist reviewer:** each changed behavior against a fixed list of risky
   cases (see EXAMPLES.md), marked same, better or worse than the base, with evidence.
@@ -119,11 +155,41 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
 
 ## Settling
 
-For each open point, concede or rebut with a reason; reopen a settled point only if
-something material changes. Stop when nothing is open or the arguments repeat: up
-to 5 rounds per debate (10 if still converging). If you don't settle, bring in
-Astra on the same label (`--model astra`); if that doesn't settle it either, report
-both positions to the user. Never claim an agreement you didn't reach.
+Check each finding yourself. Fix a demonstrated problem with the smallest
+change; rebut a false positive with code, tests or output. Defer unrelated work
+with a reason. Judge impact using evidence: wrong data shown to users, permission
+failures and data loss can matter even on an uncommon path. Do not add a guard,
+abstraction or test just to obtain a reviewer's agreement.
+
+Stop when nothing material is open, the same disagreement survives two replies
+without new evidence, or the total budget ends. If a round remains, Astra may
+arbitrate a concrete dispute on the same label (`--model astra`); it does not add
+rounds. Return an explicit **approved**, **changes required**, **disputed** or
+**review unavailable** verdict, tied to the reviewed snapshot. Budget exhaustion,
+silence and tool failure are never approval. Show unresolved positions and the
+evidence the user needs to decide; never hide them behind "done".
+
+## PR handoff, when requested
+
+A review alone authorizes no commit, push, PR comment or merge. If the user also
+asked for a PR or PR updates, finish that work and follow through on CI and
+review within the authorized scope. Verify bot findings before editing, explain
+dismissals when replying is authorized, and keep fixes within the review budget.
+Use one attached CI watcher; inspect its result when it ends. Do not treat a
+successful watcher exit as proof that every review and merge requirement passed.
+
+Before declaring readiness, read the live PR's head, actual base, checks, reviews
+and mergeability. Report checks as passed, pending, failed, absent or unavailable;
+absent checks are not green CI. Required approvals and unresolved review requests
+remain explicit blockers. Recheck affected behavior after conflict resolution or
+other changes; stale review and test results cannot approve the new state.
+
+Report the PR link and final head, review verdict and rounds, proof, deferred
+findings and remaining blockers. Leave it open unless merging was separately
+authorized; "open a PR" is not merge permission. Never force-push without the
+user's explicit ask, or bypass protections. If work cannot continue without a
+user decision, use the harness's question tool when available with the PR link,
+the blocker and concrete options; unanswered questions do not grant permission.
 
 ## If a call fails
 
