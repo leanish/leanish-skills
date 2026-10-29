@@ -35,6 +35,9 @@ Our first-party skills, still being shaped. New leanish skills land here too.
   state, debating each point until both agents settle, after cheap Haiku sub-agents look first. The user
   can swap who implements and who reviews.
   Claude Code only: it calls Codex through its wrapper, so it needs Node.js and a working Codex CLI.
+- [budget-roles](./skills/wip/budget-roles/SKILL.md) — swap who implements and who reviews between
+  Claude and Codex by the budget each has left, and keep long work going across usage limits. Claude Code
+  only, next to four-eyes.
 - [release-flow](./skills/wip/release-flow/SKILL.md) — validate release candidates, finish release
   PRs, publish and repin adopters. Works in both Claude Code and Codex.
 - [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
