@@ -6,6 +6,6 @@
   "gradle": { "builds": [] },
   "releaseAgeDays": 7,
   "ownPackages": {
-    "GitHub Actions": { "owners": ["leanish"] }
+    "GitHub Actions": { "owners": ["leanish", "actions", "aws-actions"] }
   }
 }
