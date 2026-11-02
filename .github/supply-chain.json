@@ -5,7 +5,7 @@
   },
   "gradle": { "builds": [] },
   "releaseAgeDays": 7,
-  "ownPackages": {
+  "trustedPackages": {
     "GitHub Actions": { "owners": ["leanish", "actions", "aws-actions"] }
   }
 }
