@@ -34,17 +34,21 @@ reasons, and add what I missed."*
 
 **Implement.** Claude makes the three changes.
 
-**Haiku reviews.** Run the checklist reviewer and gap-hunter (D) in parallel,
-read-only. Claude judges their findings and fixes what's real before asking Sol.
+**Haiku reviews.** This change touches gateway errors, retries and query behavior,
+so run the checklist reviewer and gap-hunter (D) in parallel, read-only. Claude
+judges their findings and fixes what's real before asking Sol.
 
 **Review and final check** (same label, same state):
 
-> **Round 1** — Codex runs the payments tests (`--write`, changing nothing but build
-> output) and finds no test for the idempotency key. Claude adds it (an agreed, concrete correction is its own plan) and runs the Haiku reviews on the new diff.
-> **Round 2** — Codex: the diff is correct, the request is met, tests pass.
+> **Round 2** — Codex runs the payments tests (`--write`, changing nothing but build
+> output) and finds no test for the idempotency key. Claude adds it (an agreed,
+> concrete correction is its own plan) and repeats only the affected retry check.
+> **Round 3** — Codex: the diff is correct, the request is met, tests pass.
 > **Settled.**
 
-Report: #1, #2, #4 done; #3 skipped as cosmetic; nothing unresolved.
+Record the reviewed HEAD and working-tree changes, commands/results and finding
+dispositions. Report: approved in 3 total rounds; #1, #2, #4 done; #3 deferred as
+cosmetic; nothing unresolved. The implementation and final check shared a pass.
 
 ---
 
@@ -84,10 +88,10 @@ node "$SCRIPT" cache-ttl --write --prompt-file /tmp/cc-cache-brief.md
 
 Use readable-path allowlists. Never list private folders as forbidden paths.
 
-**Review and final check** by Claude, since Codex implemented: run both Haiku
-reviewers. The checklist reviewer finds the TTL isn't reset on update. Claude
+**Review and final check** by Claude, since Codex implemented: a targeted state
+check is sufficient for this narrow change. It finds the TTL isn't reset on update. Claude
 reads the relevant code, confirms the finding and sends it with a fix. Codex fixes
-it and adds a test (one `--write` call). Repeat the Haiku reviews on the new diff.
+it and adds a test (one `--write` call, not a reviewer round). Repeat the state check.
 Claude judges them and checks the end state against the request: done.
 
 **Astra**, only because the user asked for an extra look (same thread, one call):
@@ -96,7 +100,8 @@ Claude judges them and checks the end state against the request: done.
 node "$SCRIPT" cache-ttl --model astra --message "Take an extra look at the end state against the original request. List anything missing or wrong."
 ```
 
-The next call without `--model` is back on Sol.
+The next call without `--model` is back on Sol. The plan review and Astra pass
+used 2 external review rounds; neither the implementation nor its fix did.
 
 ---
 
@@ -107,6 +112,10 @@ Re-check availability when resuming pending work:
 ```
 node "$SCRIPT" --budget
 ```
+
+First read the checkpoint: reviewed snapshot, rounds already used, open IDs,
+live task handles and output paths. Inspect completed or partial outputs before
+starting a new call. An account change does not start a new review budget.
 
 Don't hold work back or warn about Codex usage. If a call actually fails, report
 its exact error. For a usage limit, use `--wait` as the fallback:
@@ -129,8 +138,8 @@ reports; `--budget` shows the same numbers beforehand.
 
 ## D — the Haiku reviewers and a mechanical writer
 
-Run both reviewers read-only in parallel, as fresh Haiku sub-agents at high
-effort, each under about 100K tokens of context. Pass the readable-path
+When the preflight is justified, run both reviewers read-only in parallel, as
+fresh Haiku sub-agents at high effort, each under about 100K tokens of context. Pass the readable-path
 allowlist to both. Don't prime either with the implementer's conclusions.
 
 **Checklist reviewer prompt:**
@@ -162,6 +171,29 @@ Claude judges the findings and reads code when needed. For a mechanical writer,
 allow only named docs or comments, or an already reviewed patch. Require a
 scope check, `git diff --check` and the relevant checks. Give it no logic changes.
 Claude reads the full resulting diff as if Claude wrote it.
+
+---
+
+## E — the budget ends with a disagreement
+
+The ledger already records 3 external passes: plan, implementation and a
+corrective review. Finding F2 remains disputed. Sol proposes a new compatibility
+layer; Claude points to the supported-caller contract and a passing regression
+test. Neither side brings new evidence, and there is no qualifying high-risk case.
+
+Do not start a fresh label or call Astra. Report `disputed`, the reviewed
+snapshot, both positions and their evidence. Do not describe the PR as approved
+or ready. Keep any requested PR open with F2 explicit.
+
+## F — CI on a different head
+
+The user asked to open a PR. Tests and review covered head A. A later conflict
+fix changed behavior and the live PR is now at head B, with checks pending.
+
+Recheck the affected behavior, run required checks and request a corrective pass
+within the remaining budget. Watch CI on B. Report pending, failed, absent or
+unavailable checks accurately; neither green CI on A nor a successful push
+proves readiness on B. Opening the PR never authorizes merging it.
 
 ---
 

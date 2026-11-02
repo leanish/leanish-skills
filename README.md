@@ -32,11 +32,14 @@ Our first-party skills, still being shaped. New leanish skills land here too.
 
 - [four-eyes](./skills/wip/four-eyes/SKILL.md) — more certainty that the work is right from an
   external agent: Codex ("Chatz", on Sol, Astra or Luna) reviews the plan, the implementation and the final
-  state, debating each point until both agents settle, after cheap Haiku sub-agents look first. The user
-  can swap who implements and who reviews.
+  state within one task-wide review budget. Haiku preflight is optional; findings, evidence and
+  unresolved disagreements survive handoffs. Requested PR work ends with an explicit verdict on
+  its current head. The user can swap who implements and who reviews.
   Claude Code only: it calls Codex through its wrapper, so it needs Node.js and a working Codex CLI.
 - [release-flow](./skills/wip/release-flow/SKILL.md) — validate release candidates, finish release
-  PRs, publish and repin adopters. Works in both Claude Code and Codex.
+  PRs, publish and repin adopters. Tracks recurring findings and interrupts repeated failed
+  candidate cycles without weakening the release gates. Works in Claude Code and Codex when
+  the required reviewers are available; no sibling skill is required.
 - [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
   Luna only when that is cheaper overall, and verify with the smallest sufficient checks. Codex
   only: it delegates to Codex sub-agents running Luna.
@@ -57,6 +60,13 @@ Full attribution, copyright notices, and license text are in
 [skills/third-party/NOTICES.md](./skills/third-party/NOTICES.md); see also
 [skills/third-party/README.md](./skills/third-party/README.md). Each skill directory is standalone
 (its own `SKILL.md`) and can also be installed individually.
+
+## Validation
+
+Run the wrapper's unit and subprocess tests with
+`node --test skills/wip/four-eyes/scripts/four-eyes.test.mjs`.
+Instruction changes also need [behavioral scenario evaluation](./tests/skill-scenarios.md):
+frontmatter validation and wrapper tests alone do not establish good agent decisions.
 
 ## Supply-chain coverage
 
