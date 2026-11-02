@@ -37,6 +37,11 @@ Our first-party skills, still being shaped. New leanish skills land here too.
   Claude Code only: it calls Codex through its wrapper, so it needs Node.js and a working Codex CLI.
 - [release-flow](./skills/wip/release-flow/SKILL.md) — validate release candidates, finish release
   PRs, publish and repin adopters. Works in both Claude Code and Codex.
+- [harden-workflows](./skills/wip/harden-workflows/SKILL.md) — audit and harden GitHub Actions
+  workflows to reduce what a dependency, plugin or action running in CI can do with the job's
+  credentials: permissions per job, persisted checkout credentials, SHA pins, secrets, and publishing
+  split from building. Works in both Claude Code and Codex; its scripts need Node.js, `gh`, and the `yaml`
+  package for the audit.
 - [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
   Luna only when that is cheaper overall, and verify with the smallest sufficient checks. Codex
   only: it delegates to Codex sub-agents running Luna.
