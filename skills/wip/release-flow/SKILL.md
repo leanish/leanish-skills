@@ -95,10 +95,13 @@ out without claiming there is none. Staying private doesn't change whether it bl
 - Keep reviewers' replies in the session and tell the user privately. Put the
   details in a draft GitHub security advisory; if the agent can't create one, the
   user does.
-- Fix it in the advisory's temporary private fork, ahead of the rest of the next
-  release. CI doesn't run there: run the checks locally and say so, rather than
-  exposing the patch for a green run.
-- Publish the advisory once the fixed release reaches adopters.
+- Fix it ahead of the rest of the next release. The usual flow would expose the fix
+  early through public PRs, tags, prereleases and CI, including a repo's own public
+  steps, and the advisory's private fork runs no CI. So before starting, agree with
+  the user where the candidate lives, how all three review steps see it whole, which
+  checks run instead and which wait, and when the patch goes public. Never waive a
+  check silently.
+- Publish the advisory once the fixed release is available to adopters.
 - Public repos with releases keep private vulnerability reporting on.
 - A private repo records it in `docs/coverage-gaps.md` as usual. Before making the
   repo public, check what its history and logs say about any unfixed one, and
