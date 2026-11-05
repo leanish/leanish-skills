@@ -72,9 +72,10 @@ release tag and repins. Never defer it until after the release.
 
 ## Release records
 
-Every repo with releases keeps these two files. Create each with the repo's next
-release and real content, never empty. Anyone may read them: no credentials or
-private data.
+Every repo with releases keeps these two files. Create a missing one with the
+repo's next release and real content, never empty; an existing one keeps its
+history and uses this format for new releases. They land through their own PRs,
+never in the release PR. Anyone may read them: no credentials or private data.
 
 - `docs/validation.md`: one short section per release, with its candidates, what
   each reviewer added per candidate (a finding others missed, one rightly
