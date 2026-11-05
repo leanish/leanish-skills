@@ -42,15 +42,14 @@ on main through their own PR, then tag a new candidate and start again at step 1
    of work before it. The reviewer is picked per iteration, not per PR or release:
    if Claude implemented it, Sol reviews, and vice versa; if both did, both review
    the whole state. Give only what to review, not where to look or what step 1 found.
-3. **Last review, by Astra.** Required, once every check on the candidate passed
-   (real runs, CI, steps 1 and 2 found no blocker). It reads step 2's reviews,
-   challenges those findings, looks for what was missed, and checks each finding
-   against the deployed release. Continuing Sol's thread from step 2
-   (`--model astra`) saves cost when Sol reviewed, but isn't required; on a new
-   label, the message carries the candidate and deployed tags, the scope and the
-   access limits. Either way, give it any step 2 review its thread hasn't seen.
-   Astra costs much more than Sol, so it never runs on a candidate that still has
-   a known blocker.
+3. **Last review, by Astra.** Required, but it costs much more than Sol, so it runs
+   only once every check on the candidate passed (real runs, CI, steps 1 and 2 found
+   no blocker). It reads step 2's reviews, challenges those findings, looks for what
+   was missed, and checks each finding against the deployed release. Continuing
+   Sol's thread from step 2 (`--model astra`) saves cost when Sol reviewed, but isn't
+   required; on a new label, the message carries the candidate and deployed tags, the
+   scope and the access limits. Either way, give it any step 2 review its thread
+   hasn't seen.
 
 Run the final unprimed review on the last candidate, before the release PR,
 release tag and repins. Never defer it until after the release.
@@ -84,14 +83,26 @@ never in the release PR. Anyone may read them: no credentials or private data.
 - `docs/coverage-gaps.md`: the known limitations. When a release found none, say
   what was reviewed to reach that, never a bare "none".
 
-In a public repo, a limitation someone could use against an adopter before it's
-fixed goes in neither file, nor in PRs, the CHANGELOG, release notes or issues.
-Keep it in a draft GitHub security advisory, fix it ahead of the rest of the next
-release, and publish the advisory with the fix. Public repos with releases keep
-private vulnerability reporting on. A private repo records it in
-`docs/coverage-gaps.md` as usual; check those notes before making the repo public.
-
 After the release, report what each model contributed and its rough cost.
+
+## Exploitable limitations
+
+While a repo is public, a limitation someone could use against an adopter before
+it's fixed stays out of all public text: records, commits, PRs, review comments,
+issues, the CHANGELOG, release notes and the model report. Public records leave it
+out without claiming there is none. Staying private doesn't change whether it blocks.
+
+- Keep reviewers' replies in the session and tell the user privately. Put the
+  details in a draft GitHub security advisory; if the agent can't create one, the
+  user does.
+- Fix it in the advisory's temporary private fork, ahead of the rest of the next
+  release. CI doesn't run there: run the checks locally and say so, rather than
+  exposing the patch for a green run.
+- Publish the advisory once the fixed release reaches adopters.
+- Public repos with releases keep private vulnerability reporting on.
+- A private repo records it in `docs/coverage-gaps.md` as usual. Before making the
+  repo public, check what its history and logs say about any unfixed one, and
+  settle that with the user.
 
 ## Release PR
 
@@ -107,7 +118,7 @@ After the release, report what each model contributed and its rough cost.
   Anything else needs a new candidate and the full review sequence.
 - Run the project's full check (`npm run check`, `./gradlew check`), and require
   green CI, and CodeQL when configured, on the release PR's head. Report integration
-  tests that skipped: a skip isn't passing evidence. Keep the real-run evidence.
+  tests that skipped: a skip isn't passing evidence.
 - Watch CI yourself in the background and continue on green; don't wait for the
   user or rely on auto-fix bots. Diagnose failures first: rerun failed jobs for
   environment failures or flakes; fix real bugs through the normal loop and make a
@@ -118,9 +129,9 @@ After the release, report what each model contributed and its rough cost.
 
 ## Tag and publish
 
-- Squash-merge, then put a lightweight `v<version>` tag at the exact merge commit. Use the full merge
-  SHA as the target, not a branch tip. Create the GitHub release with the fixes
-  and a link to the CHANGELOG. If a publish workflow runs from that release and
+- Squash-merge, then put a lightweight `v<version>` tag at the exact merge commit,
+  using the full merge SHA, not a branch tip. Create the GitHub release with the
+  fixes and a link to the CHANGELOG. If a publish workflow runs from that release and
   requires the merge commit's checks, wait until they are green first. Publish
   packages to external registries only with the user's explicit OK.
 - Right after publishing, open a PR that only starts the next development
