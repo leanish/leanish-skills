@@ -78,10 +78,10 @@ release tag and repins. Never defer it until after the release.
 ## Release PR
 
 - Open `release/<version>` from the reviewed candidate's commit.
-- Keep the release PR to release metadata: the version change (drop `-SNAPSHOT`;
-  in an npm repo, `version` in the root `package.json` and both root version fields
-  in `package-lock.json`, leaving `private` flags and workspace versions alone),
-  the CHANGELOG's "Unreleased" heading turned into the version and release date,
+- Keep the release PR to release metadata: the version change (drop `-SNAPSHOT`,
+  or set the released version in `package.json` and its matching
+  `package-lock.json` fields; the repo's release doc says which ones), the
+  CHANGELOG's "Unreleased" heading turned into the version and release date,
   and docs that name the current release. Feature PRs document the upcoming version
   under "Unreleased"; they never change the version itself.
 - Right before merging, verify main is still at the candidate's commit. On the
