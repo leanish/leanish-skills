@@ -66,14 +66,24 @@ release tag and repins. Never defer it until after the release.
 - A finding whose only effect is that a tool doesn't update something
   automatically (it skips it with a visible note, or the attempt fails visibly)
   doesn't block: document it as a known limitation and fix it later.
-- Document pre-existing problems as known limitations, in the repo's
-  known-limitations doc when it has one, and fix them in the next release. Holding
-  every release for old problems keeps the deployed release, which has them all,
-  running longer.
-- Record per candidate what each reviewer added, in the repo's validation record
-  when it has one: a finding others missed, one rightly overturned, or only time
-  and tokens spent. After the release, report what each model contributed and its
-  rough cost.
+- Document pre-existing problems as known limitations in `docs/coverage-gaps.md`
+  and fix them in the next release. Holding every release for old problems keeps
+  the deployed release, which has them all, running longer.
+
+## Release records
+
+Every repo with releases keeps these two files. Create each with the repo's next
+release and real content, never empty. Anyone may read them: no credentials or
+private data.
+
+- `docs/validation.md`: one short section per release, with its candidates, what
+  each reviewer added per candidate (a finding others missed, one rightly
+  overturned, or only time and tokens spent), the rough cost per model, and the
+  evidence of the real runs.
+- `docs/coverage-gaps.md`: the known limitations. When a release found none, say
+  what was reviewed to reach that, never a bare "none".
+
+After the release, report what each model contributed and its rough cost.
 
 ## Release PR
 
