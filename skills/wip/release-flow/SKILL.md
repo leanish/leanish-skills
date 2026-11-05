@@ -24,12 +24,11 @@ repo's specifics. Use these defaults otherwise. This flow works in both agents.
   Verify effects yourself (files, PRs, CI); don't trust a model's report.
 
 Review each candidate in order. Start each step only if the previous step found
-no blocker. The unprimed and last reviews (steps 2 and 3) are each one
-exhaustive pass: they go through every changed area and report every finding, of
-any severity, in one reply, never stopping at the first blocker. Make all the
-fixes a candidate gets together on main through their own PR (what goes to the
-next release or patch stays there), then tag a new candidate and start again at
-step 1.
+no blocker. Every review, in every step, is one exhaustive pass: it goes through
+every changed area and reports every finding, of any severity, in one reply,
+never stopping at the first blocker. Make all the fixes a candidate gets together
+on main through their own PR (what goes to the next release or patch stays
+there), then tag a new candidate and start again at step 1.
 
 1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run two read-only
    reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
@@ -53,19 +52,15 @@ release tag and repins. Never defer it until after the release.
 
 ## What blocks
 
-- Block only on regressions against the deployed release: something that worked
-  there and no longer does, or works worse (weakened verification or gates, wrong
-  data, aborted runs). The implementer judges each finding against this rule;
-  don't treat every finding as required work.
-- A tool that skips or delays something with a visible note doesn't block, nor
-  does an automatic update attempt that fails visibly with no effect beyond
-  leaving the update undone.
-- Document pre-existing problems, and problems in what the release adds that
-  aren't regressions, as known limitations and fix them in the next release.
-  Holding a release for them keeps the deployed release, which either has them
-  or lacks the feature, running longer.
-- Docs block only when they would lead someone to a wrong action. Smaller
-  inaccuracies go to the next patch.
+- Block only on findings new or worse than the deployed release: weakened
+  verification or gates, wrong data, or aborted runs. The implementer judges each
+  finding against this rule; don't treat every finding as required work.
+- Minor findings don't block: a nit, or a small inaccuracy in docs or text that
+  leads no one to a wrong action and weakens nothing. They go to the next patch.
+- A tool that skips something with a visible note doesn't block.
+- Document pre-existing problems as known limitations and fix them in the next
+  release. Holding every release for old problems keeps the deployed release,
+  which has them all, running longer.
 - Record per candidate what each reviewer added: a finding others missed, one
   rightly overturned, or only time and tokens spent. After the release, report
   what each model contributed and its rough cost.
