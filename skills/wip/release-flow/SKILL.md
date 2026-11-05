@@ -16,7 +16,7 @@ repo's specifics. Use these defaults otherwise. This flow works in both agents.
 
 ## Release candidates
 
-- Tag the candidate commit on main with a lightweight `v<version>-rc.<n>` tag.
+- Tag the latest reviewed commit on main with a lightweight `v<version>-rc.<n>` tag.
   Candidate and release tags never move. Fixes get new candidates.
 - Run the thing for real from a checkout of the candidate. Use real CLIs or
   services with synthetic or test data, never private data. Run on the adopters
@@ -24,8 +24,10 @@ repo's specifics. Use these defaults otherwise. This flow works in both agents.
   Verify effects yourself (files, PRs, CI); don't trust a model's report.
 
 Review each candidate in order. Start each step only if the previous step found
-no blocker. Fix a blocker on main through its own PR, then tag a new candidate
-and start again at step 1.
+no blocker. Every review, in every step, is one exhaustive pass: it goes through
+every changed area and reports every finding, of any severity, in one reply,
+never stopping at the first blocker. Make all the fixes a candidate gets together
+on main through their own PR, then tag a new candidate and start again at step 1.
 
 1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run two read-only
    reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
@@ -33,16 +35,21 @@ and start again at step 1.
    changed behavior against fixed risky cases, with same/better/worse evidence;
    a gap-hunter gets only the diff and "What does this break that worked before,
    or let through?" Give the gap-hunter no checklist or implementation explanation.
-2. **Unprimed review.** Sol reviews the whole state on a fresh thread or label,
-   even if Sol implemented some of the release (the fresh thread keeps it
-   independent). Give only what to review, not where to look or what
-   step 1 found.
-3. **Last review, by Astra.** Only when every check on the candidate passed (real
-   runs, CI, steps 1 and 2 found no blocker): Astra, on Sol's thread from step 2
-   (`--model astra`), for one last review. It sees and challenges Sol's findings,
-   looks for what was missed, and checks each finding against the deployed
-   release. Astra costs much more than Sol, so it never runs on a candidate that
-   still has a known blocker.
+2. **Unprimed review.** Whoever didn't implement the last iteration reviews the
+   whole state, in a fresh context (a new thread, label or sub-agent) that keeps
+   it independent. An iteration is one round of implementation: what went into
+   this candidate since the previous one or, on a first candidate, the last round
+   of work before it. The reviewer is picked per iteration, not per PR or release:
+   if Claude implemented it, Sol reviews, and vice versa; if both did, both review
+   the whole state. Give only what to review, not where to look or what step 1 found.
+3. **Last review, by Astra.** Required, but it costs much more than Sol, so it runs
+   only once every check on the candidate passed (real runs, CI, steps 1 and 2 found
+   no blocker). It reads step 2's reviews, challenges those findings, looks for what
+   was missed, and checks each finding against the deployed release. Continuing
+   Sol's thread from step 2 (`--model astra`) saves cost when Sol reviewed, but isn't
+   required; on a new label, the message carries the candidate and deployed tags, the
+   scope and the access limits. Either way, give it any step 2 review its thread
+   hasn't seen.
 
 Run the final unprimed review on the last candidate, before the release PR,
 release tag and repins. Never defer it until after the release.
@@ -52,36 +59,84 @@ release tag and repins. Never defer it until after the release.
 - Block only on findings new or worse than the deployed release: weakened
   verification or gates, wrong data, or aborted runs. The implementer judges each
   finding against this rule; don't treat every finding as required work.
-- A tool that skips something with a visible note doesn't block.
-- Document pre-existing problems as known limitations and fix them in the next
-  release. Holding every release for old problems keeps the deployed release,
-  which has them all, running longer.
-- Record per candidate what each reviewer added: a finding others missed, one
-  rightly overturned, or only time and tokens spent. After the release, report
-  what each model contributed and its rough cost.
+- Minor findings don't block: a nit, or a small inaccuracy in docs or text that
+  leads no one to a wrong action and weakens nothing. When a new candidate is cut
+  for another reason, fix all of them in it; otherwise they go to the next patch.
+- A finding whose only effect is that a tool doesn't update something
+  automatically (it skips it with a visible note, or the attempt fails visibly)
+  doesn't block: document it as a known limitation and fix it later.
+- Document pre-existing problems as known limitations in `docs/coverage-gaps.md`
+  and fix them in the next release. Holding every release for old problems keeps
+  the deployed release, which has them all, running longer.
+
+## Release records
+
+Every repo with releases keeps these two files. Create a missing one with the
+repo's next release and real content, never empty; an existing one keeps its
+history and uses this format for new releases. They land through their own PRs,
+never in the release PR. Anyone may read them: no credentials or private data.
+
+- `docs/validation.md`: one short section per release, with its candidates, what
+  each reviewer added per candidate (a finding others missed, one rightly
+  overturned, or only time and tokens spent), the rough cost per model, and the
+  evidence of the real runs.
+- `docs/coverage-gaps.md`: the known limitations. When a release found none, say
+  what was reviewed to reach that, never a bare "none".
+
+After the release, report what each model contributed and its rough cost.
+
+## Exploitable limitations
+
+While a repo is public, a limitation someone could use against an adopter before
+it's fixed stays out of all public text: records, commits, PRs, review comments,
+issues, the CHANGELOG, release notes and the model report. Public records leave it
+out without claiming there is none. Staying private doesn't change whether it blocks.
+
+- Keep reviewers' replies in the session and tell the user privately. Put the
+  details in a draft GitHub security advisory; if the agent can't create one, the
+  user does.
+- Fix it ahead of the rest of the next release. The usual flow would expose the fix
+  early through public PRs, tags, prereleases and CI, including a repo's own public
+  steps, and the advisory's private fork runs no CI. So before starting, agree with
+  the user where the candidate lives, how all three review steps see it whole, which
+  checks run instead and which wait, and when the patch goes public. Never waive a
+  check silently.
+- Publish the advisory once the fixed release is available to adopters.
+- Public repos with releases keep private vulnerability reporting on.
+- A private repo records it in `docs/coverage-gaps.md` as usual. Before making the
+  repo public, check what its history and logs say about any unfixed one, and
+  settle that with the user.
 
 ## Release PR
 
+- Open `release/<version>` from the reviewed candidate's commit.
 - Keep the release PR to release metadata: the version change (drop `-SNAPSHOT`,
-  or set the root version) and the dated CHANGELOG heading. Feature PRs document
-  the upcoming version; they never change the version itself.
+  or set the released version in `package.json` and its matching
+  `package-lock.json` fields; the repo's release doc says which ones), the
+  CHANGELOG's "Unreleased" heading turned into the version and release date,
+  and docs that name the current release. Feature PRs document the upcoming version
+  under "Unreleased"; they never change the version itself.
 - Right before merging, verify main is still at the candidate's commit. On the
   release PR branch, verify `git diff v<rc> HEAD` shows only release metadata.
   Anything else needs a new candidate and the full review sequence.
-- Require green CI on the release PR's head. Watch CI yourself in the background
-  and continue on green; don't wait for the user or rely on auto-fix bots.
-  Diagnose failures first: rerun failed jobs for environment failures or flakes;
-  fix real bugs through the normal loop and make a new candidate.
+- Run the project's full check (`npm run check`, `./gradlew check`), and require
+  green CI, and CodeQL when configured, on the release PR's head. Report integration
+  tests that skipped: a skip isn't passing evidence.
+- Watch CI yourself in the background and continue on green; don't wait for the
+  user or rely on auto-fix bots. Diagnose failures first: rerun failed jobs for
+  environment failures or flakes; fix real bugs through the normal loop and make a
+  new candidate.
 - Update PR branches by merging main, not rebasing. Never force-push without the
   user's explicit ask. Merge only when the user asked for it or explicitly
   authorized the current flow.
 
 ## Tag and publish
 
-- Squash-merge, then tag `v<version>` at the exact merge commit. Use the full merge
-  SHA as the target, not a branch tip. Create the GitHub release with the fixes
-  and a link to the CHANGELOG. Publish packages to external registries only with
-  the user's explicit OK.
+- Squash-merge, then put a lightweight `v<version>` tag at the exact merge commit,
+  using the full merge SHA, not a branch tip. Create the GitHub release with the
+  fixes and a link to the CHANGELOG. If a publish workflow runs from that release and
+  requires the merge commit's checks, wait until they are green first. Publish
+  packages to external registries only with the user's explicit OK.
 - Right after publishing, open a PR that only starts the next development
   version (for example, `X.Y.(Z+1)-SNAPSHOT`), adds the new CHANGELOG heading and
   updates docs pointing at it. Keep main carrying the next development version;
@@ -92,7 +147,8 @@ release tag and repins. Never defer it until after the release.
 - Pin consumers by full commit SHA with the version as a comment:
   `uses: owner/repo/.github/workflows/x.yml@<full-sha> # v<version>`.
   Require green checks on the repin PRs. A repository rename's redirect does not
-  cover reusable-workflow `uses:`; repin with the new name.
+  cover reusable-workflow `uses:`; repin with the new name. Later development
+  never moves a released tag or an adopter's pin.
 - Install released tools from the release commit in a stable checkout outside
   temp directories. Keep the user's configs and secret services. Never put
   credentials in Git, release notes, scheduling files or agent input.
