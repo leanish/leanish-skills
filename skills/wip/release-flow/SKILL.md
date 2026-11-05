@@ -84,6 +84,13 @@ never in the release PR. Anyone may read them: no credentials or private data.
 - `docs/coverage-gaps.md`: the known limitations. When a release found none, say
   what was reviewed to reach that, never a bare "none".
 
+In a public repo, a limitation someone could use against an adopter before it's
+fixed goes in neither file, nor in PRs, the CHANGELOG, release notes or issues.
+Keep it in a draft GitHub security advisory, fix it ahead of the rest of the next
+release, and publish the advisory with the fix. Public repos with releases keep
+private vulnerability reporting on. A private repo records it in
+`docs/coverage-gaps.md` as usual; check those notes before making the repo public.
+
 After the release, report what each model contributed and its rough cost.
 
 ## Release PR
