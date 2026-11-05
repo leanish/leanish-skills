@@ -40,14 +40,15 @@ on main through their own PR, then tag a new candidate and start again at step 1
    it independent. An iteration is one round of implementation: what went into
    this candidate since the previous one or, on a first candidate, the last round
    of work before it. The reviewer is picked per iteration, not per PR or release:
-   if Claude implemented it, Sol reviews, and vice versa; if both did, ask the user
-   who reviews. Give only what to review, not where to look or what step 1 found.
-3. **Last review, by Astra.** Only when every check on the candidate passed (real
-   runs, CI, steps 1 and 2 found no blocker): Astra, for one last review, on Sol's
-   thread from step 2 (`--model astra`) or, when Claude did step 2, on a new label
-   whose message carries that review, the candidate and deployed tags, the scope
-   and the access limits. It sees and challenges those findings, looks for what was
-   missed, and checks each finding against the deployed release.
+   if Claude implemented it, Sol reviews, and vice versa; if both did, both review
+   the whole state. Give only what to review, not where to look or what step 1 found.
+3. **Last review, by Astra.** Required, once every check on the candidate passed
+   (real runs, CI, steps 1 and 2 found no blocker). It reads step 2's reviews,
+   challenges those findings, looks for what was missed, and checks each finding
+   against the deployed release. Continuing Sol's thread from step 2
+   (`--model astra`) saves cost when Sol reviewed, but isn't required; on a new
+   label, the message carries the candidate and deployed tags, the scope and the
+   access limits. Either way, give it any step 2 review its thread hasn't seen.
    Astra costs much more than Sol, so it never runs on a candidate that still has
    a known blocker.
 
