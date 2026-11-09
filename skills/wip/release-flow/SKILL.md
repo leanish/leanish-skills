@@ -30,7 +30,8 @@ never stopping at the first blocker. Make all the fixes a candidate gets togethe
 on main through their own PR, then tag a new candidate and start again at step 1.
 
 1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run two read-only
-   reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
+   reviewers in parallel on `git diff v<deployed> v<rc>`. Use
+   `git show v<deployed>:<file>` for comparison.
    Follow [four-eyes](../four-eyes/SKILL.md): a checklist reviewer checks each
    changed behavior against fixed risky cases, with same/better/worse evidence;
    a gap-hunter gets only the diff and "What does this break that worked before,
