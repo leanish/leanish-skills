@@ -27,11 +27,12 @@ sub-agents (not external). **Chatz** is Codex working as the second agent.
 1. **Plan.** The planner writes numbered items (claim, reason, worth doing: yes/no).
    The other side does its own pass, agrees or disagrees with reasons, and adds
    what's missing. Any logic change or design gets this review; only trivial or
-   mechanical edits skip it.
+   mechanical edits skip it. In the same call, the reviewer also does the scope
+   role of [scrutinize](../scrutinize/SKILL.md), with its packet.
 2. **Implement** the agreed items.
-3. **Review.** The Haiku reviewers (below) look first; fix what's real. Then
-   whoever didn't implement reviews the diff, or before/after evidence for changes
-   outside Git.
+3. **Review.** Run scrutinize's claims and correctness roles: the Haiku reviewers
+   look first; fix what's real. Then whoever didn't implement reviews the diff,
+   with the packet, or before/after evidence for changes outside Git.
 4. **Final check.** Before saying it's done, whoever didn't implement checks the
    end state against the original request: everything asked is done, the relevant
    checks ran, docs match, open points are listed. It can share a call with step 3
@@ -63,19 +64,8 @@ and tested. Both implementing, then Claude combining the two, is only on request
 
 ## Haiku reviewers
 
-Two read-only Haiku sub-agents review each change in parallel:
-
-- **Checklist reviewer:** each changed behavior against a fixed list of risky
-  cases (see EXAMPLES.md), marked same, better or worse than the base, with evidence.
-- **Gap-hunter:** only the diff and "What does this break that worked before, or
-  let through?" No checklist and no explanation, so it doesn't inherit the
-  implementer's blind spots.
-
-Claude judges their findings and reads the code only where a finding needs it.
-Start each one fresh, never as a fork, so it doesn't see this conversation.
-Define them with `model: haiku` and `autoCompactWindow: 100000` in the
-sub-agent's frontmatter and keep their reads narrow: above about 100K tokens a
-prompt costs several times more, and compaction can't split one large read.
+Their prompts and rules are in [scrutinize](../scrutinize/SKILL.md): a claims
+reviewer, a checklist reviewer and a gap-hunter. Claude judges their findings.
 A Haiku sub-agent may also write mechanical, low-risk edits (docs, comments, a
 reviewed patch) with tight self-checks; Claude reviews its whole diff as its own.
 

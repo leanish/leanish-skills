@@ -29,26 +29,26 @@ every changed area and reports every finding, of any severity, in one reply,
 never stopping at the first blocker. Make all the fixes a candidate gets together
 on main through their own PR, then tag a new candidate and start again at step 1.
 
-1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run two read-only
-   reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
-   Follow [four-eyes](../four-eyes/SKILL.md): a checklist reviewer checks each
-   changed behavior against fixed risky cases, with same/better/worse evidence;
-   a gap-hunter gets only the diff and "What does this break that worked before,
-   or let through?" Give the gap-hunter no checklist or implementation explanation.
+1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run the three read-only
+   reviewers from [scrutinize](../scrutinize/SKILL.md) in parallel on
+   `git diff v<deployed> v<rc>`: claims (with the packet), checklist and
+   gap-hunter. Use `git show v<deployed>:<file>` for comparison. A candidate's
+   problem statement is its issues or milestone, quoted.
 2. **Unprimed review.** Whoever didn't implement the last iteration reviews the
    whole state, in a fresh context (a new thread, label or sub-agent) that keeps
    it independent. An iteration is one round of implementation: what went into
    this candidate since the previous one or, on a first candidate, the last round
    of work before it. The reviewer is picked per iteration, not per PR or release:
    if Claude implemented it, Sol reviews, and vice versa; if both did, both review
-   the whole state. Give only what to review, not where to look or what step 1 found.
+   the whole state. Give scrutinize's packet and only what to review, not where to
+   look or what step 1 found.
 3. **Last review, by Astra.** Required, but it costs much more than Sol, so it runs
    only once every check on the candidate passed (real runs, CI, steps 1 and 2 found
    no blocker). It reads step 2's reviews, challenges those findings, looks for what
    was missed, and checks each finding against the deployed release. Continuing
    Sol's thread from step 2 (`--model astra`) saves cost when Sol reviewed, but isn't
    required; on a new label, the message carries the candidate and deployed tags, the
-   scope and the access limits. Either way, give it any step 2 review its thread
+   packet, the scope and the access limits. Either way, give it any step 2 review its thread
    hasn't seen.
 
 Run the final unprimed review on the last candidate, before the release PR,
