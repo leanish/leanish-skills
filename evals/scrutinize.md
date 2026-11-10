@@ -17,8 +17,9 @@ installed or loaded with the skill.
    leanish/leanish-development, then the planted or synthetic edits the case
    lists, and its texts verbatim.
 2. Run the role with the model listed, as scrutinize says. The allowlist covers
-   the packet files and the base revision, never `evals/`. Give the role the
-   case's review date when it has one.
+   the packet files and the base revision, never `evals/`; keep prompts and
+   outputs outside the folders a reviewer can read. When the case has a review
+   date, tell the role to review as if today were that date.
 3. Claude and Sol each grade the output against the expected result on their
    own, then settle as four-eyes does. A grade that doesn't settle is recorded
    with both positions.
@@ -26,8 +27,9 @@ installed or loaded with the skill.
    - **Pass:** the expected result, and nothing else that would lead to a
      harmful change.
    - **Partial:** the expected finding is there, but the run also accuses
-     falsely, misclassifies (for example, reports unverified as contradicted)
-     or recommends a harmful change. Say which.
+     falsely, misclassifies (for example, reports unverified as contradicted),
+     recommends a harmful change, or misses another condition of the expected
+     result. Say which.
    - **Fail:** the expected finding is missing.
 5. Record run integrity: a run that read outside its allowlist or saw the
    expected results isn't a blind result. Keep it as it happened and say so.
@@ -66,7 +68,7 @@ not here.
   > checked against. An older CLI could ignore the switch silently and keep
   > background tasks on.
 
-  No sources, no network.
+  No problem statement, no evidence, no sources, no network.
 - **Expected:** reports at least one of the reason for 2.1.312 and the claim
   about older CLIs as unverified, with a narrower wording; doesn't list
   confirmed claims; calls nothing false.
@@ -91,11 +93,13 @@ not here.
 ### 3. Control: a small fix — scope, Sol; claims, Haiku on a synthetic variant
 
 - **Source:** leanish/leanish-development#471, `b9d4aa979..e60f665d5`.
-- **Packet:** the diff; the problem, in the requester's words, translated from
-  Spanish and lightly edited: "that test: can we fix it just by extending the
-  timeout? No flakiness, please"; evidence: the test failed once in a full
-  local run and passed when repeated; and this PR text:
+- **Packet:** the diff; the problem, in the requester's words: "that test: can
+  we fix it just by extending the timeout? No flakiness, please"; evidence: the
+  test failed once in a full local run and passed when repeated; and this PR
+  text:
 
+  > # giving the runner timeout test time to reach its stub
+  >
   > The test for cleaning up after a Claude Code timeout failed once during a
   > full local run and passed when repeated.
   >
@@ -110,7 +114,7 @@ not here.
 - **Expected, scope:** no request to enlarge the change and no defect
   invented. The measurements and the 1 ms reproduction may be questioned as
   unverified, not as false.
-- **Synthetic clean variant, for claims:** the same packet with the measured
+- **Synthetic variant, for claims:** the same packet with the measured
   claims taken out. Only two things differ. The comment the diff adds reads:
 
   ```ts
@@ -120,15 +124,19 @@ not here.
 
   and the PR text is:
 
+  > # giving the runner timeout test time to reach its stub
+  >
   > The test for cleaning up after a Claude Code timeout failed once during a
   > full local run and passed when repeated.
   >
   > The test kills a stub shell after 200 ms and then reads a file the stub
   > writes as it starts; if the stub is killed first, there is nothing to read.
   > This raises the timeout to 1 second. No production code changes.
-- **Expected, claims on the variant:** no defect, nothing called false, nothing
-  to enlarge. The one-time failure may be noted as resting on the stated
-  evidence only.
+- **Expected, claims on the variant:** no invented defect, nothing called
+  false, nothing to enlarge. The one-time failure may be noted as resting on
+  the stated evidence only. The variant keeps a real gap #471 had: the copied
+  test's header doesn't name the timeout change, as
+  `core/agent-runtime/PROVENANCE.md` asks. Reporting it is correct.
 
 ### 4. A claim of testing and an unrequested part — claims, Haiku; scope, Sol
 
@@ -180,13 +188,14 @@ not here.
 ### 5. Contradicted versus unverified — claims, Haiku
 
 - **Source:** case 4's packet and review date, plus this synthetic run output,
-  given as a source file in the packet:
+  given as a source file in the packet, from the author's own helper script
+  (not in the repository):
 
   ```text
   $ node --version
-  v20.18.0
-  $ npm run gate -- --fixtures fixtures/
-  checked 9 of 12 fixture repositories: 9 passed, 3 skipped (no lockfile)
+  v24.11.0
+  $ ./scan-fixtures.sh   # supply-chain scan --head worktree in each fixture checkout
+  scanned 9 of 12 fixture repositories: 9 passed, 3 skipped (no lockfile)
   ```
 - **Expected:** "every fixture repository" reported as contradicted (a
-  defect), and "Node 24" as unverified, not as false.
+  defect), and "Node 20" as unverified, not as false.
