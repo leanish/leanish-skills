@@ -48,7 +48,11 @@ user asks for Codex.
 Settle each step before the next. Corrections and follow-ups, including later
 requests from the user, go through the same loop; if you changed something before
 Codex saw the plan, tell the user. At the end, tell the user what was done, what
-was skipped and why, and what is unresolved. Releases follow
+was skipped and why, and what is unresolved. Pre-existing problems a review found
+outside the change go there too: propose an issue per cause, with its evidence,
+unless one is already open, and let the user decide whether to open it. Anything
+exploitable stays out of public issues (see "Exploitable limitations" in
+release-flow). Releases follow
 [release-flow](../release-flow/SKILL.md).
 
 ## Roles

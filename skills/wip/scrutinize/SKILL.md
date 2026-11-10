@@ -34,6 +34,9 @@ Whoever runs this assembles it before any role starts:
   the change adds.
 - **Sources for its factual claims:** primary ones where available, such as
   changelogs, release notes, test and run output.
+- **The project's instructions and review guidance,** such as `AGENTS.md`,
+  `CLAUDE.md` or a review guide, where they exist, as of the base revision. A
+  change to them is part of what is under review.
 - **Whether the repository is public.**
 
 The implementer's explanations and test reports are claims to verify, not
@@ -118,6 +121,14 @@ location, a scenario and how it was confirmed, and is one of:
   incomplete.
 - **Preference:** labeled. It never blocks or justifies more complexity.
 
+When a defect is one instance of a pattern, name its other instances in what is
+under review, so one round can fix them all. An instance you came across outside
+it that the base already had, and that the change doesn't make worse, is
+pre-existing: report it for a separate change, and don't search for more. It
+doesn't block this change, but report a leak or anything exploitable first and
+keep it out of public text (see below). One the change causes or worsens belongs
+to this review, wherever it is.
+
 Whoever runs this verifies each finding and records it as open, fixed, rebutted or
 deferred; short IDs help. A settled point reopens only for changed code or new
 evidence. Don't recommend extra mechanisms just to win agreement.
@@ -137,13 +148,14 @@ text: follow "Exploitable limitations" in
 
 Return the verdict and the head or material it covers. A later edit needs the affected roles again.
 
-- **Approved.**
+- **No changes required:** a review result, not an approval to merge. When there
+  are no findings, say so plainly.
 - **Changes required.**
 - **Disputed:** reviewers still disagree after the evidence; give both positions.
 - **Incomplete:** material evidence is missing, the scope reviewer said a summary
   isn't enough, or a required reviewer is unavailable.
 
-With no reviewer other than whoever implemented it, it's a self-check, never
-approved. For each role,
+With no reviewer other than whoever implemented it, it's a self-check: its
+verdict is at best incomplete, since a required reviewer is missing. For each role,
 say who reviewed, whether the review was unprimed or continued a thread, the
 confirmed and dismissed findings with why, and the time and tokens when observed.
