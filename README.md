@@ -43,7 +43,8 @@ Our first-party skills, still being shaped. New leanish skills land here too.
 - [scrutinize](./skills/wip/scrutinize/SKILL.md) — review a proposal or change against the problem
   it's meant to solve: scope and simplicity, claims, docs and publication, and correctness. Returns
   findings and a verdict; four-eyes and release-flow use its roles and keep their own stages and
-  corrections.
+  corrections. When changing its prompts, packet, findings rules or assigned models, rerun the
+  affected cases in [evals/scrutinize.md](./evals/scrutinize.md).
 - [harden-workflows](./skills/wip/harden-workflows/SKILL.md) — audit and harden GitHub Actions
   workflows to reduce what a dependency, plugin or action running in CI can do with the job's
   credentials: permissions per job, persisted checkout credentials, SHA pins, secrets, and publishing
