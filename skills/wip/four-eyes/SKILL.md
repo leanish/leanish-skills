@@ -75,7 +75,10 @@ the report says the review had that context.
 
 ## Haiku reviewers
 
-Three read-only Haiku sub-agents review each change in parallel:
+Three read-only Haiku sub-agents review each change in parallel, before it's
+published (for a PR, before opening it). The claims reviewer checks the drafted
+PR text against the local check output, and runs again when either, or the code
+behind a claim, changes, or CI disagrees.
 
 - **Checklist reviewer:** each changed behavior against a fixed list of risky
   cases (see EXAMPLES.md), marked same, better or worse than the base, with evidence.

@@ -95,6 +95,10 @@ it's fixed stays out of all public text: records, commits, PRs, review comments,
 issues, the CHANGELOG, release notes and the model report. Public records leave it
 out without claiming there is none. Staying private doesn't change whether it blocks.
 
+It counts only when it lets someone do more than their access already allows;
+other limits are documented publicly. If one that counts is already public, add
+no detail and follow the steps below.
+
 - Keep reviewers' replies in the session and tell the user privately. Put the
   details in a draft GitHub security advisory; if the agent can't create one, the
   user does.
