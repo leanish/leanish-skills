@@ -1,13 +1,12 @@
 ---
 name: scrutinize
 description: >-
-  Review a proposal or change against the problem it is meant to solve: scope
-  and simplicity, factual claims and docs, and correctness. Returns findings and
-  a verdict. Use when asked to scrutinize or vet a plan, branch, PR or release
-  candidate, or when four-eyes or release-flow call for one of its roles.
-  Otherwise, offer it when a solution has grown beyond its original problem,
-  repeated iterations address the same kind of issue or add complexity without
-  resolving it, or an important decision relies on unverified factual claims.
+  Use when asked to scrutinize or vet a plan, branch, PR or release candidate
+  against the problem it is meant to solve (scope, claims and docs,
+  correctness). Otherwise, offer it when a solution has grown beyond its
+  original problem, repeated iterations address the same kind of issue or add
+  complexity without resolving it, or an important decision relies on
+  unverified factual claims.
 ---
 
 # Scrutinize
