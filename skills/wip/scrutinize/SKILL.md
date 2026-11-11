@@ -35,6 +35,8 @@ Whoever runs this assembles it before any role starts:
   `CLAUDE.md` or a review guide, where they exist, as of the base revision. A
   change to them is part of what is under review.
 - **Whether the repository is public.**
+- **For a PR, its review threads:** given to a correctness reviewer only after it
+  has written its own findings.
 
 The implementer's explanations and test reports are claims to verify, not
 evidence.
@@ -85,7 +87,9 @@ Check every factual claim in the change and the published texts: versions,
 primary sources or observed output where you have them. Report only the claims
 that aren't confirmed. A claim the evidence contradicts is a defect; missing
 evidence means unverified, neither false nor confirmed. For each one that matters, give its location, what's missing and a
-narrower wording that would hold. Then: do the docs match the change, and is
+narrower wording that would hold. A passing run on X shows X was tested, not
+when a feature appeared or the minimum version needed. A started or timed-out
+check is not a pass. Then: do the docs match the change, and is
 anything stale or contradictory? Where the change repeats a claim, suggest
 consolidating it or keep the copies consistent. If the repository is public, is
 any private project name or local path present? Say what you couldn't check.
@@ -102,7 +106,9 @@ and the project's instructions. Look for regressions, broken contracts and
 missing verification that materially affects confidence. Verify reported check
 results from their output when you can. Separate new or worse issues from
 pre-existing ones. Give path and line or reproduction evidence and the affected
-behavior. Say what you could and couldn't verify.
+behavior. Say what you could and couldn't verify. For a PR, after writing your
+independent findings, assess existing actionable review threads in scope against
+the reviewed state. Report what still applies as findings.
 ```
 
 ## Findings
@@ -143,6 +149,9 @@ text: follow "Exploitable limitations" in
 ## Report
 
 Return the verdict and the head or material it covers. A later edit needs the affected roles again.
+Put findings that determine the verdict first, then order the rest by impact,
+with preferences last. Do not infer "no changes required" from silence or tool
+failure.
 
 - **No changes required:** a review result, not an approval to merge. When there
   are no findings, say so plainly.
