@@ -216,6 +216,8 @@ not here.
   The review date is 2026-11-04, when #389 was opened, so release ages and
   expiry dates read as they did then.
 - **Expected, claims:** reports the "Tested" line as unverified, not false.
+  Noting that the gate's documented invocation needs Node 24's type stripping
+  is correct; it doesn't show how the author ran it.
 - **Expected, scope:** names the minimist exception as not called for, without
   being told about it.
 
@@ -232,4 +234,4 @@ not here.
   scanned 9 of 12 fixture repositories: 9 passed, 3 skipped (no lockfile)
   ```
 - **Expected:** "every fixture repository" reported as contradicted (a
-  defect), and "Node 20" as unverified, not as false.
+  defect), and "Node 20" as unverified, not as false, as in case 4.
