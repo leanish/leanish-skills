@@ -1,12 +1,10 @@
 ---
 name: scrutinize
 description: >-
-  Use when asked to scrutinize or vet a plan, branch, PR or release candidate
-  against the problem it is meant to solve (scope, claims and docs,
-  correctness). Otherwise, offer it when a solution has grown beyond its
-  original problem, repeated iterations address the same kind of issue or add
-  complexity without resolving it, or an important decision relies on
-  unverified factual claims.
+  Use when asked to scrutinize or vet something. Otherwise, offer it when a
+  solution has grown beyond its original problem, repeated iterations address
+  the same kind of issue or add complexity without resolving it, or an
+  important decision relies on unverified factual claims.
 ---
 
 # Scrutinize
@@ -14,9 +12,9 @@ description: >-
 Check the solution against the problem it's meant to solve, catching unnecessary
 mechanisms and unsupported claims as well as regressions.
 
-This skill reviews and returns findings and a verdict. The flow that invokes it
-decides the models, the stages, the corrections and any further pass. Nothing
-here fixes the change or repeats a review.
+This skill reviews and returns findings and a verdict. It doesn't fix the
+change; whoever invokes it may assign the reviewers, and decides what to correct
+and whether to review again.
 
 ## The packet
 
@@ -55,15 +53,14 @@ unless the user asks. A mechanical edit skips only the scope role; an edit that
 changes behavior isn't mechanical.
 
 Use the reviewers the invocation assigns. With none assigned, use the cheapest
-available at high effort. When Sol reviews from Claude Code, use the four-eyes
-wrapper (see "Calling Chatz" and "Independent, private and cheap" in
-[four-eyes](../four-eyes/SKILL.md)); in Codex, use a fresh sub-agent.
+available at high effort.
 
 ### Scope and simplicity
 
 Whoever didn't write the proposal. It runs before any code exists, and again only
 when the scope changes: a new mechanism, area or requirement, not each tweak.
-Judge against the original problem, never against the previous round.
+When it runs again, compare the whole solution with the original problem, not
+only what changed since the last round.
 
 ```text
 Here are the problem, the evidence of what happened, and the proposal or diff.
