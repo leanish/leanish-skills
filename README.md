@@ -19,6 +19,9 @@ npx skills@latest add leanish/leanish-skills --skill four-eyes -a claude-code
 npx skills@latest add leanish/leanish-skills --skill frugality -a codex
 ```
 
+Install `scrutinize` along with `four-eyes` or `release-flow`, since both use its roles. In Claude
+Code, a `scrutinize` review by Sol goes through the `four-eyes` wrapper.
+
 Each skill is then invoked using your agent's own convention — e.g. `/four-eyes` in Claude
 Code, `$frugality` in Codex.
 
@@ -37,6 +40,10 @@ Our first-party skills, still being shaped. New leanish skills land here too.
   Claude Code only: it calls Codex through its wrapper, so it needs Node.js and a working Codex CLI.
 - [release-flow](./skills/wip/release-flow/SKILL.md) — validate release candidates, finish release
   PRs, publish and repin adopters. Works in both Claude Code and Codex.
+- [scrutinize](./skills/wip/scrutinize/SKILL.md) — review a proposal or change against the problem
+  it's meant to solve: scope and simplicity, claims, docs and publication, and correctness. Returns
+  findings and a verdict; four-eyes and release-flow use its roles and keep their own stages and
+  corrections.
 - [harden-workflows](./skills/wip/harden-workflows/SKILL.md) — audit and harden GitHub Actions
   workflows to reduce what a dependency, plugin or action running in CI can do with the job's
   credentials: permissions per job, persisted checkout credentials, SHA pins, secrets, and publishing

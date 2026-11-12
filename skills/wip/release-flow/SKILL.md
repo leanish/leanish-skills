@@ -29,26 +29,27 @@ every changed area and reports every finding, of any severity, in one reply,
 never stopping at the first blocker. Make all the fixes a candidate gets together
 on main through their own PR, then tag a new candidate and start again at step 1.
 
-1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run two read-only
+1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run three read-only
    reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
-   Follow [four-eyes](../four-eyes/SKILL.md): a checklist reviewer checks each
-   changed behavior against fixed risky cases, with same/better/worse evidence;
-   a gap-hunter gets only the diff and "What does this break that worked before,
-   or let through?" Give the gap-hunter no checklist or implementation explanation.
+   They are [scrutinize](../scrutinize/SKILL.md)'s claims reviewer, checklist
+   reviewer and gap-hunter, each with only the input scrutinize names. The claims
+   reviewer's packet takes the candidate's issues or milestone, quoted, as its
+   problem.
 2. **Unprimed review.** Whoever didn't implement the last iteration reviews the
    whole state, in a fresh context (a new thread, label or sub-agent) that keeps
    it independent. An iteration is one round of implementation: what went into
    this candidate since the previous one or, on a first candidate, the last round
    of work before it. The reviewer is picked per iteration, not per PR or release:
    if Claude implemented it, Sol reviews, and vice versa; if both did, both review
-   the whole state. Give only what to review, not where to look or what step 1 found.
+   the whole state. Give scrutinize's packet and correctness brief and only what to
+   review, not where to look or what step 1 found.
 3. **Last review, by Astra.** Required, but it costs much more than Sol, so it runs
    only once every check on the candidate passed (real runs, CI, steps 1 and 2 found
    no blocker). It reads step 2's reviews, challenges those findings, looks for what
    was missed, and checks each finding against the deployed release. Continuing
    Sol's thread from step 2 (`--model astra`) saves cost when Sol reviewed, but isn't
    required; on a new label, the message carries the candidate and deployed tags, the
-   scope and the access limits. Either way, give it any step 2 review its thread
+   packet, the scope and the access limits. Either way, give it any step 2 review its thread
    hasn't seen.
 
 Run the final unprimed review on the last candidate, before the release PR,
@@ -91,6 +92,10 @@ While a repo is public, a limitation someone could use against an adopter before
 it's fixed stays out of all public text: records, commits, PRs, review comments,
 issues, the CHANGELOG, release notes and the model report. Public records leave it
 out without claiming there is none. Staying private doesn't change whether it blocks.
+
+It counts only when it lets someone do more than their access already allows;
+other limits are documented publicly. If one that counts is already public, add
+no detail and follow the steps below.
 
 - Keep reviewers' replies in the session and tell the user privately. Put the
   details in a draft GitHub security advisory; if the agent can't create one, the
