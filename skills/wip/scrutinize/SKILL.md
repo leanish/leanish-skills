@@ -68,8 +68,9 @@ entirely. With none assigned, the roles that apply go to:
    correctness in one exhaustive pass. Only after writing its own findings does
    it get the Haiku findings, and it confirms, rebuts or re-rates each with
    evidence. A blocker found in step 1 doesn't skip step 2.
-3. **Astra** (Codex's stronger, costlier model) continues Sol's thread, unless a
-   confirmed blocker remains; then the report says it was skipped. It's the one
+3. **Astra** (Codex's stronger, costlier model) at medium effort continues Sol's
+   thread, unless a confirmed blocker remains; then the report says it was
+   skipped. It's the one
    reviewer that starts from the earlier findings instead of its own pass. It
    looks for missed issues and wrong dispositions and returns the final list:
    each finding confirmed, rebutted or re-rated with its evidence, plus what was
