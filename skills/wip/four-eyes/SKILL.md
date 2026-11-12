@@ -30,14 +30,17 @@ sub-agents (not external). **Chatz** is Codex working as the second agent.
    mechanical edits skip it. In the same call, the reviewer does the scope role of
    [scrutinize](../scrutinize/SKILL.md), with its packet.
 2. **Implement** the agreed items.
-3. **Review.** The Haiku reviewers (below) look first; fix what's real. Then
-   whoever didn't implement reviews the diff with scrutinize's packet and correctness
-   brief, or before/after evidence for changes outside Git. If the diff adds a
-   mechanism, area or requirement the plan didn't have, it repeats the scope role.
+3. **Review.** The Haiku reviewers (below) run first. Then whoever didn't
+   implement reviews the diff with scrutinize's packet and correctness brief, or
+   before/after evidence for changes outside Git, and only then settles the Haiku
+   findings. If the diff adds a mechanism, area or requirement the plan didn't
+   have, it repeats the scope role.
 4. **Final check.** Before saying it's done, whoever didn't implement checks the
    end state against the original request: everything asked is done, the relevant
    checks ran, docs match, open points are listed. It can share a call with step 3
-   when both look at the same state; any later edit reopens it.
+   when both look at the same state; any later edit reopens it. Before merging a
+   PR, its current head needs a valid review; one of an earlier head counts only
+   if nothing relevant changed since.
 
 A review or a question with no change is step 1 alone: both look independently,
 settle, and tell the user where you agree and where you don't.
@@ -67,28 +70,25 @@ network, no commit or push, which checks to run, and a report of what it changed
 and tested. Both implementing, then Claude combining the two, is only on request
 (see [EXAMPLES.md](EXAMPLES.md)).
 
-When this flow calls scrutinize, whoever reviews takes its scope and correctness
-roles and a Haiku sub-agent its claims role. This flow's steps and Settling decide
-corrections and further passes. When Sol reviews, the task's own thread does the
-correctness review; when Claude does, it works from the context it has. Either way
-the report says the review had that context.
+When this flow calls scrutinize, it assigns these reviewers in place of
+scrutinize's defaults: the three Haiku reviewers (below), and whoever didn't
+implement for scope and correctness, with no routine Astra pass. When Sol reviews,
+the task's own thread does it; when Claude does, it works from the context it has.
+Either way the report says the review had that context. This flow's steps and
+Settling decide corrections and further passes.
 
 ## Haiku reviewers
 
 Three read-only Haiku sub-agents review each change in parallel, before it's
-published (for a PR, before opening it). The claims reviewer checks the drafted
-PR text against the local check output, and runs again when either, or the code
-behind a claim, changes, or CI disagrees.
+published (for a PR, before opening it): scrutinize's claims reviewer, checklist
+reviewer and gap-hunter, each with only the input scrutinize names. The claims
+reviewer checks the drafted PR text against the local check output, and runs
+again when either, or the code behind a claim, changes, or CI disagrees.
 
-- **Checklist reviewer:** each changed behavior against a fixed list of risky
-  cases (see EXAMPLES.md), marked same, better or worse than the base, with evidence.
-- **Gap-hunter:** only the diff and "What does this break that worked before, or
-  let through?" No checklist and no explanation, so it doesn't inherit the
-  implementer's blind spots.
-- **Claims reviewer:** the claims role of scrutinize, with its packet.
-
-Claude judges their findings and reads the code only where a finding needs it.
-Start each one fresh, never as a fork, so it doesn't see this conversation.
+Whoever reviews correctness gets their findings only after writing its own, and
+confirms, rebuts or re-rates each with evidence. Claude resolves the dismissals
+that change the verdict and anything material still open, reading the code only
+where a finding needs it. Start each one fresh, never as a fork, so it doesn't see this conversation.
 Define them with `model: haiku` and `autoCompactWindow: 100000` in the
 sub-agent's frontmatter and keep their reads narrow: above about 100K tokens a
 prompt costs several times more, and compaction can't split one large read.

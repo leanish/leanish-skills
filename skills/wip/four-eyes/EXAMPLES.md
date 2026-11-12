@@ -35,7 +35,7 @@ reasons, and add what I missed."*
 **Implement.** Claude makes the three changes.
 
 **Haiku reviews.** Run the checklist reviewer, gap-hunter (D) and claims reviewer
-in parallel, read-only. Claude judges their findings and fixes what's real before asking Sol.
+in parallel, read-only. Sol settles their findings after its own review, below.
 
 **Review and final check** (same label, same state):
 
@@ -131,36 +131,11 @@ reports; `--budget` shows the same numbers beforehand.
 
 Run the reviewers read-only in parallel, as fresh Haiku sub-agents at high
 effort, each under about 100K tokens of context. Pass the readable-path
-allowlist to all. Don't prime any with the implementer's conclusions. The prompts
-for the checklist reviewer and gap-hunter are below; the claims reviewer's is in
-[scrutinize](../scrutinize/SKILL.md).
+allowlist to all. Don't prime any with the implementer's conclusions. Their
+prompts and inputs are in [scrutinize](../scrutinize/SKILL.md).
 
-**Checklist reviewer prompt:**
-
-```text
-Review each changed behavior against this fixed checklist:
-- empty, missing, invalid and boundary inputs;
-- errors and partial failures;
-- retries and duplicate operations;
-- stale state, expiry and updates;
-- permissions and verification gates;
-- output data and compatibility with existing callers;
-- for code that reads files or paths: links (to a file, a folder, the root,
-  chains, outside the tree, loops), case and Unicode variants, base versus head,
-  a folder where a file is expected, `.`, `..` and empty segments, submodules,
-  very large or looping inputs.
-Use the diff and base source. Mark each case same, better or worse than the base
-version. Give file/line or test evidence. Don't edit files.
-```
-
-**Gap-hunter prompt:** provide only the diff and this question, alongside access
-limits. Give no checklist or explanation:
-
-```text
-What does this break that worked before, or let through?
-```
-
-Claude judges the findings and reads code when needed. For a mechanical writer,
+Whoever reviews correctness settles their findings after its own review. For a
+mechanical writer,
 allow only named docs or comments, or an already reviewed patch. Require a
 scope check, `git diff --check` and the relevant checks. Give it no logic changes.
 Claude reads the full resulting diff as if Claude wrote it.
