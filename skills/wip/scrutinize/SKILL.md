@@ -59,20 +59,21 @@ unless the user asks. A mechanical edit skips only the scope role; an edit that
 changes behavior isn't mechanical.
 
 Use the reviewers the invocation assigns; an assignment replaces these defaults
-entirely. With none assigned:
+entirely. With none assigned, the roles that apply go to:
 
-1. **Three Haiku sub-agents** (Claude's cheapest model) at high effort, in
-   parallel, launched by whoever runs this: the claims reviewer, the checklist
-   reviewer and the gap-hunter.
+1. **Haiku sub-agents** (Claude's cheapest model) at high effort, in parallel,
+   launched by whoever runs this: the claims reviewer, and for a diff the
+   checklist reviewer and the gap-hunter.
 2. **Sol** (Codex) at high effort, in a fresh context, takes scope and
    correctness in one exhaustive pass. Only after writing its own findings does
    it get the Haiku findings, and it confirms, rebuts or re-rates each with
-   evidence. Steps 1 and 2 always both run.
+   evidence. A blocker found in step 1 doesn't skip step 2.
 3. **Astra** (Codex's stronger, costlier model) continues Sol's thread, unless a
    confirmed blocker remains; then the report says it was skipped. It's the one
-   reviewer that deliberately sees the others' findings. It looks for missed
-   issues and wrong dispositions and returns the final list: each finding
-   confirmed, rebutted or re-rated with its evidence, plus what was missed.
+   reviewer that starts from the earlier findings instead of its own pass. It
+   looks for missed issues and wrong dispositions and returns the final list:
+   each finding confirmed, rebutted or re-rated with its evidence, plus what was
+   missed.
 
 ### Scope and simplicity
 

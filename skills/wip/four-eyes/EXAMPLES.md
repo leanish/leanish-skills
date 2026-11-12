@@ -85,10 +85,12 @@ node "$SCRIPT" cache-ttl --write --prompt-file /tmp/cc-cache-brief.md
 Use readable-path allowlists. Never list private folders as forbidden paths.
 
 **Review and final check** by Claude, since Codex implemented: run the three Haiku
-reviewers. The checklist reviewer finds the TTL isn't reset on update. Claude
-reads the relevant code, confirms the finding and sends it with a fix. Codex fixes
-it and adds a test (one `--write` call). Repeat the Haiku reviews on the new diff.
-Claude judges them and checks the end state against the request: done.
+reviewers. Claude reviews the diff and writes its own findings, then reads the
+Haiku ones. The checklist reviewer found the TTL isn't reset on update, which
+Claude missed; Claude reads the relevant code, confirms it and sends it with a
+fix. Codex fixes it and adds a test (one `--write` call). Claude reviews the new
+diff first, then the repeated Haiku reviews, and checks the end state against the
+request: done.
 
 **Astra**, only because the user asked for an extra look (same thread, one call):
 
