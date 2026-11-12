@@ -15,8 +15,8 @@ description: >-
 The goal is more certainty that what we do is right, from an agent outside
 Claude. The name comes from the four-eyes principle, but there are usually more
 eyes: cheap Haiku sub-agents for specific checks first, then one Sol review that
-carries the weight. Haiku goes first because it costs a fraction of Sol: what it
-catches doesn't cost a Sol round-trip, and Sol's review isn't spent on the obvious.
+carries the weight. Haiku goes first because it costs a fraction of Sol, and Sol
+settles its findings in the same review, without an extra round-trip.
 
 **Models**, always the newest version: **Sol**, **Astra** and **Luna** are Codex
 (OpenAI) model families; **Haiku** is Claude's cheapest model, run as Claude Code
@@ -71,8 +71,9 @@ and tested. Both implementing, then Claude combining the two, is only on request
 (see [EXAMPLES.md](EXAMPLES.md)).
 
 When this flow calls scrutinize, it assigns these reviewers in place of
-scrutinize's defaults: the three Haiku reviewers (below), and whoever didn't
-implement for scope and correctness, with no routine Astra pass. When Sol reviews,
+scrutinize's defaults: the three Haiku reviewers (below), whoever didn't write
+the plan for scope, and whoever didn't implement for correctness, with no routine
+Astra pass. When Sol reviews,
 the task's own thread does it; when Claude does, it works from the context it has.
 Either way the report says the review had that context. This flow's steps and
 Settling decide corrections and further passes.
