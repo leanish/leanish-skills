@@ -31,12 +31,10 @@ on main through their own PR, then tag a new candidate and start again at step 1
 
 1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run three read-only
    reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
-   Follow [four-eyes](../four-eyes/SKILL.md): a checklist reviewer checks each
-   changed behavior against fixed risky cases, with same/better/worse evidence;
-   a gap-hunter gets only the diff and "What does this break that worked before,
-   or let through?" Give the gap-hunter no checklist or implementation explanation.
-   The third does the claims role of [scrutinize](../scrutinize/SKILL.md) with its
-   packet, where the candidate's problem is its issues or milestone, quoted.
+   They are [scrutinize](../scrutinize/SKILL.md)'s claims reviewer, checklist
+   reviewer and gap-hunter, each with only the input scrutinize names. The claims
+   reviewer's packet takes the candidate's issues or milestone, quoted, as its
+   problem.
 2. **Unprimed review.** Whoever didn't implement the last iteration reviews the
    whole state, in a fresh context (a new thread, label or sub-agent) that keeps
    it independent. An iteration is one round of implementation: what went into
@@ -94,6 +92,10 @@ While a repo is public, a limitation someone could use against an adopter before
 it's fixed stays out of all public text: records, commits, PRs, review comments,
 issues, the CHANGELOG, release notes and the model report. Public records leave it
 out without claiming there is none. Staying private doesn't change whether it blocks.
+
+It counts only when it lets someone do more than their access already allows;
+other limits are documented publicly. If one that counts is already public, add
+no detail and follow the steps below.
 
 - Keep reviewers' replies in the session and tell the user privately. Put the
   details in a draft GitHub security advisory; if the agent can't create one, the
