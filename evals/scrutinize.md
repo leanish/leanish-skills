@@ -43,7 +43,41 @@ Put the evidence of each run in the PR that changes the skill: the full output
 used, both grades and the observed time and tokens. This file keeps only the
 cases.
 
-A full run is four Haiku runs and three Sol calls, plus grading by both.
+A full run is four Haiku runs, three Sol calls and four filter runs, plus
+grading by both.
+
+## Filtered claims results
+
+In four-eyes, Claude judges a Haiku reviewer's findings before anyone acts on
+them. This step measures the claims role plus that judgment, in isolation. It
+leaves out the coordinator's own context and the dismissals that go to Sol
+afterwards, so it isn't what a full four-eyes run would let through. Scope
+cases stay raw: there, Claude settles Sol's findings by debate, not by
+filtering.
+
+1. Take a claims run's raw output and its packet. When only the filter
+   changes, reuse the recorded raw output; when the packet or the role
+   changes, produce a new raw run first.
+2. Start a fresh Claude sub-agent, not a fork, on the model that judges
+   Haiku's findings in four-eyes. Give it the packet's allowlist, the raw
+   output's path and this prompt, never `evals/` or the expected results:
+
+   > Another model reviewed a change in scrutinize's claims role; its output
+   > and the packet it reviewed are below. Act on that review as the
+   > implementer would. For each finding, decide keep, dismiss or reword, and
+   > say why. Read the packet's files or the base revision only where a
+   > finding needs checking. Keep contradicted (false) apart from unverified.
+   > Don't add findings of your own, edit files or start other reviewers. End
+   > with the findings you'd act on, as you'd hand them to the author.
+
+3. Claude and Sol grade the filtered findings against the case's expected
+   result, each on their own, then settle. They see the packet, the raw output
+   and the filter's decisions. The grades are those above; dismissing a true
+   finding is a Partial even when the expected finding survives. The filter
+   never grades its own output.
+4. Record the raw output used, the filter's model and effort, the commit of
+   this prompt, and both grades next to the raw grade, also when the filtered
+   one is worse.
 
 ## Size
 
@@ -182,6 +216,8 @@ not here.
   The review date is 2026-11-04, when #389 was opened, so release ages and
   expiry dates read as they did then.
 - **Expected, claims:** reports the "Tested" line as unverified, not false.
+  Noting that the gate's documented invocation needs Node 24's type stripping
+  is correct; it doesn't show how the author ran it.
 - **Expected, scope:** names the minimist exception as not called for, without
   being told about it.
 
@@ -198,4 +234,4 @@ not here.
   scanned 9 of 12 fixture repositories: 9 passed, 3 skipped (no lockfile)
   ```
 - **Expected:** "every fixture repository" reported as contradicted (a
-  defect), and "Node 20" as unverified, not as false.
+  defect), and "Node 20" as unverified, not as false, as in case 4.
