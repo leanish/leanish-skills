@@ -55,8 +55,8 @@ Run the final unprimed review on the last candidate, before the release PR,
 release tag and repins. Never defer it until after the release.
 
 On a project's first release there is no `v<deployed>`: wherever these steps compare
-with it, review the whole tree at the candidate instead (`git ls-files` at `v<rc>`,
-and `git show v<rc>:<file>`), and treat every finding as new for "What blocks". A
+with it, review the whole tree at the candidate instead (`git ls-tree -r --name-only v<rc>`
+to list it, `git show v<rc>:<file>` to read a file), and treat every finding as new for "What blocks". A
 later release's first candidate still compares with that release's predecessor.
 
 ## What blocks
