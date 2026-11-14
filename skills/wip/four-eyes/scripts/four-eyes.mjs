@@ -25,7 +25,7 @@ import {
   writeSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const STATE_DIR = process.env.FOUR_EYES_HOME || join(homedir(), ".claude", "four-eyes");
@@ -83,22 +83,25 @@ function requireValidLabel(label) {
   }
 }
 
-// Labels that differ only in case would share one record and lock on a case-insensitive filesystem (macOS's default),
-// so one call would resume the other's thread. Refuse a label when the state directory already has one that matches it
-// ignoring case, on every filesystem, so the rule doesn't depend on the machine.
+// Labels that differ only in case would share one record on a case-insensitive filesystem (macOS's default), so one
+// call would resume the other's thread. A label is refused when the state directory has a record matching it ignoring
+// case under another spelling and none under its own, on every filesystem, so the rule doesn't depend on the machine.
+// The spelling comes from the directory listing: on a case-insensitive filesystem existsSync("task.json") is also
+// true for "Task.json". Calls check while holding the label's lock (see lockPath), so a record created by another
+// call in the meantime is seen.
 function requireNoCaseCollision(label) {
   if (!existsSync(LABELS_DIR)) return;
-  const wanted = new Set([`${label}.json`, `${label}.lock`]);
-  for (const entry of readdirSync(LABELS_DIR)) {
-    const match = [...wanted].find((name) => name.toLowerCase() === entry.toLowerCase());
-    if (match && !wanted.has(entry)) {
-      die(`label "${label}" differs only in case from the existing "${entry.replace(/\.(json|lock)$/, "")}"; use that one, or another name`);
-    }
+  const own = `${label}.json`;
+  const records = readdirSync(LABELS_DIR).filter((entry) => entry.toLowerCase() === own.toLowerCase());
+  const other = records.find((entry) => entry !== own);
+  if (other && !records.includes(own)) {
+    die(`label "${label}" differs only in case from the existing "${other.replace(/\.json$/, "")}"; use that one, or another name`);
   }
 }
 
 const recordPath = (label) => join(LABELS_DIR, `${label}.json`);
-const lockPath = (label) => join(LABELS_DIR, `${label}.lock`);
+// One lock per label ignoring case, so labels that differ only in case also can't run at the same time.
+const lockPath = (label) => join(LABELS_DIR, `${label.toLowerCase()}.lock`);
 
 // Records hold thread pointers and logs hold raw agent output: keep both owner-only.
 // mkdir's mode applies on creation only, so chmod existing dirs too.
@@ -189,6 +192,20 @@ function acquireLock(label) {
     die(err.code === "EEXIST" ? lockHeldMessage(label, path) : `cannot create lock ${path}: ${err.message}`);
   }
   heldLock = path;
+  // Earlier versions named the lock with the label as given: on a case-sensitive filesystem such a lock, held by a
+  // call still running, doesn't block this one's name, so it's checked here.
+  const legacy = readdirSync(LABELS_DIR).find((entry) =>
+    entry !== basename(path) && entry.toLowerCase() === basename(path) && lockOwnerAlive(join(LABELS_DIR, entry)));
+  if (legacy) die(lockHeldMessage(label, join(LABELS_DIR, legacy)));
+}
+
+function lockOwnerAlive(path) {
+  try {
+    const pid = Number(readFileSync(path, "utf8").trim());
+    return Number.isInteger(pid) && pid > 0 && pidAlive(pid);
+  } catch {
+    return false;
+  }
 }
 
 // Removes the lock only if this process still owns it.
@@ -829,11 +846,12 @@ async function attemptCall({ label, record, prompt, call }) {
 async function callCodex(opts) {
   if (!opts.label) die("a <label> is required");
   requireValidLabel(opts.label);
-  requireNoCaseCollision(opts.label);
   const prompt = resolvePrompt(opts);
   if (prompt.trim() === "") die("a prompt is required (--prompt-file, --message, --stdin, or -- <words>)");
 
+  // After reading the prompt (which may wait on stdin) and under the lock, so no record appears between check and load.
   acquireLock(opts.label);
+  requireNoCaseCollision(opts.label);
   let record = loadRecord(opts.label);
   const { model, effort } = chooseSettings(record, opts);
   let call;
@@ -967,8 +985,8 @@ async function main() {
   }
   if (opts.reset != null) {
     requireValidLabel(opts.reset);
-    requireNoCaseCollision(opts.reset);
     acquireLock(opts.reset);
+    requireNoCaseCollision(opts.reset);
     const existed = existsSync(recordPath(opts.reset));
     rmSync(recordPath(opts.reset), { force: true });
     return process.stdout.write(existed ? `reset: ${opts.reset}\n` : `(nothing to reset for ${opts.reset})\n`);
