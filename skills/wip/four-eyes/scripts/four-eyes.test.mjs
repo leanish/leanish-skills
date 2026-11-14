@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   buildCodexArgs,
   chooseSettings,
@@ -804,11 +804,20 @@ test("bad arguments fail clearly", () => {
   assert.equal(s.calls().length, 0);
 });
 
-test("runs when invoked through a symbolic link", () => {
+test("runs when invoked through a symbolic link", (t) => {
   const dir = mkdtempSync(join(tmpdir(), "four-eyes-link-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
   const link = join(dir, "four-eyes.mjs");
   symlinkSync(realpathSync(SCRIPT), link);
   const result = spawnSync(process.execPath, [link, "--help"], { encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /four-eyes/i);
+});
+
+test("can be imported from a script read from stdin", () => {
+  // `node -` sets argv[1] to "-", which isn't a file: the entry-point check must not throw, and the CLI must not run.
+  const script = `import(${JSON.stringify(pathToFileURL(SCRIPT).href)}).then(() => console.log("imported"));`;
+  const result = spawnSync(process.execPath, ["-"], { input: script, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "imported");
 });
