@@ -123,9 +123,9 @@ Registry notes:
   It edits text so comments and layout survive, and refuses a file (non-zero exit, that file untouched) when a
   floating ref already has a comment, a checkout already sets `persist-credentials` (even to `false`), or the layout
   is one it can't place a key in safely. It also refuses a file with a value it can't delimit, since text inside it
-  could look like a step: an anchor or tag before a value (`&name`, `!!str`), a tab before a value, a flow collection
-  (`{…}`, `[…]`) that doesn't close on its line, or a quoted sequence item spanning lines. Files processed before a
-  refusal stay edited: check `git status`.
+  could look like a step: an anchor or tag before a value (`&name`, `!!str`), a tab before a value, a space before a
+  key's `:`, a flow collection (`{…}`, `[…]`) that doesn't close on its line, or a quoted sequence item spanning
+  lines. Files processed before a refusal stay edited: check `git status`.
 
 ## Out of scope
 

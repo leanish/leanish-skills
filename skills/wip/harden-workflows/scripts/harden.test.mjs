@@ -91,6 +91,8 @@ for (const [layout, step, reason] of [
   ["a quoted string in a multiline flow mapping", '      - env: {A: "x\n          uses: actions/setup-java@v6 y"}\n', /flow collections spanning lines/],
   // The continuation sits at the step mapping key's indentation, so indentation alone can't mark it as string content.
   ["a flow string continued at the key's indentation", '      - env: {A: "x\n        uses: actions/setup-java@v6"}\n', /flow collections spanning lines/],
+  ["a space before the key's colon", "      - run : |\n          cat <<'EOF'\n          uses: actions/setup-java@v6\n          EOF\n", /space before ':'/],
+  ["a space before a quoted key's colon", "      - \"run\" : |\n          cat <<'EOF'\n          uses: actions/setup-java@v6\n          EOF\n", /space before ':'/],
 ]) {
   test(`refuses the file with ${layout}`, () => {
     const source = workflow(step + "      - uses: actions/setup-java@v6\n");

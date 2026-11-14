@@ -104,6 +104,8 @@ function scan(lines) {
       while (stack.length && stack.at(-1).indent >= indent) stack.pop();
     }
     if (/^("[\w-]+"|'[\w-]+'|[\w-]+|<<):[ ]*\t/.test(body)) refuse(index, "a tab before a value is unsupported");
+    // `run :` is a valid key too; unrecognized, its block's lines would be read as structure.
+    if (/^("[\w-]+"|'[\w-]+'|[\w-]+|<<)[ \t]+:(?:[ \t]|$)/.test(body)) refuse(index, "space before ':' is unsupported");
     const mapping = /^("[\w-]+"|'[\w-]+'|[\w-]+|<<):(?: +(.*))?$/.exec(body);
     if (!mapping) {
       if (item) {
