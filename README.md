@@ -65,5 +65,12 @@ Full attribution, copyright notices, and license text are in
 
 ## Supply-chain coverage
 
-The gate inventories GitHub Actions referenced by this repository's workflows. This repository has no npm lockfiles
-or Gradle builds, and the gate does not inventory Python dependencies or packages referenced inside skill content.
+The gate inventories GitHub Actions referenced by this repository's workflows and the root npm lockfile, which holds
+only the scripts' test dependency (`yaml`). There are no Gradle builds, and the gate does not inventory Python
+dependencies or packages referenced inside skill content.
+
+## Development
+
+The skills' scripts are tested with `npm ci --ignore-scripts && npm test` (the `test` workflow runs the same on every PR
+and push to `main`). `npm test` fails if `yaml` isn't installed instead of skipping the audit's parser tests. The root
+`package.json` is for these tests only; installed skills don't use it.
