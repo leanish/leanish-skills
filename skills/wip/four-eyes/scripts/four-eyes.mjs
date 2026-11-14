@@ -858,7 +858,13 @@ async function callCodex(opts) {
       );
       const message = result.outcome.message;
       process.stdout.write(message.endsWith("\n") ? message : `${message}\n`);
+      // The turn did complete (and stays recorded), but the run was cancelled: say so in the exit status.
+      if (cancelledBy) die(`interrupted by ${cancelledBy} after the turn completed (kept as round ${record.rounds})`, 130);
       return;
+    }
+    if (cancelledBy) {
+      if (!call.trace && result.stderr) process.stderr.write(result.stderr);
+      die(`interrupted by ${cancelledBy}: ${result.failure} [trace: ${result.logFile}]`, 130);
     }
     const kind = deadline != null && !result.interrupted ? waitableFailure(result.error) : null;
     if (!kind) {

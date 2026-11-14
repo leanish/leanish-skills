@@ -403,7 +403,11 @@ function finish() {
   out({ type: "turn.completed", usage: { input_tokens: 10, output_tokens: 2 } });
   process.exit(0);
 }
-if (scenario === "slow" || scenario === "break-record" || scenario === "orphans") setTimeout(finish, 3000);
+if (scenario === "finish-on-term") {
+  // Completes its turn right when it is asked to stop, as a turn finishing at that moment would.
+  process.on("SIGTERM", finish);
+  setInterval(() => {}, 1000);
+} else if (scenario === "slow" || scenario === "break-record" || scenario === "orphans") setTimeout(finish, 3000);
 else finish();
 `;
 
@@ -680,6 +684,23 @@ test("a stopped call kills codex, records the failure and releases the lock", as
   assert.notEqual(await done, 0);
   assert.equal(s.record("task").lastStatus, "failed");
   assert.equal(alive(s.pidOf("exec.pid")), false);
+  assert.equal(existsSync(s.lockFile("task")), false);
+});
+
+test("a turn that completes after a stop keeps its reply and round, but the run exits as cancelled", async () => {
+  const s = sandbox();
+  s.plan("finish-on-term");
+  const child = s.start(["task", "--message", "review"]);
+  let stdout = "";
+  child.stdout.on("data", (chunk) => (stdout += chunk));
+  const done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
+  await waitFor(() => existsSync(s.recordFile("task")) && existsSync(join(s.root, "exec.pid")));
+  await new Promise((resolve) => setTimeout(resolve, 200)); // let the fake install its handler
+  child.kill("SIGTERM");
+  assert.equal(await done, 130);
+  assert.match(stdout, /reply 1/);
+  assert.equal(s.record("task").lastStatus, "succeeded");
+  assert.equal(s.record("task").rounds, 1);
   assert.equal(existsSync(s.lockFile("task")), false);
 });
 
