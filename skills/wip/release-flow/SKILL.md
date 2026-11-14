@@ -57,8 +57,12 @@ release tag and repins. Never defer it until after the release.
 ## What blocks
 
 - Block only on findings new or worse than the deployed release: weakened
-  verification or gates, wrong data, or aborted runs. The implementer judges each
-  finding against this rule; don't treat every finding as required work.
+  verification or gates, wrong data, aborted runs, a new security exposure (an
+  actor can do something they couldn't before), or a published statement that is
+  materially false (docs, CHANGELOG or help that would lead someone to a wrong
+  action or a false sense of safety). The implementer judges each finding against
+  this rule; don't treat every finding as required work. An exploitable finding
+  blocks like any other; "Exploitable limitations" below only says where it's written.
 - Minor findings don't block: a nit, or a small inaccuracy in docs or text that
   leads no one to a wrong action and weakens nothing. When a new candidate is cut
   for another reason, fix all of them in it; otherwise they go to the next patch.
