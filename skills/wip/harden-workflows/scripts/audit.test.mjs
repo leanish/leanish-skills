@@ -116,6 +116,21 @@ test("reads secret references inside expressions only, in every supported form",
   assert.equal(row[6], "CONDITION,SPACED,CASED,(dynamic),(all),FIRST,SECOND");
 });
 
+test("ignores secrets mentioned in string literals and if: outside job and step conditions", () => {
+  const [row] = auditWorkflow({ jobs: { build: {
+    steps: [
+      { if: "secrets.STEP_CONDITION != ''", uses: "owner/action@v1", with: {
+        if: "secrets.ACTION_INPUT",
+        LITERAL: "${{ format('secrets.NOT_A_REFERENCE') }}",
+        CLOSING: "${{ format('}}{0}', secrets.AFTER_CLOSING) }}",
+        QUOTE: "${{ format('it''s', secrets.AFTER_QUOTE) }}",
+        BRACKET: "${{ secrets['BRACKET'] }}",
+      } },
+    ],
+  } } }, "repo", "ci.yml");
+  assert.equal(row[6], "STEP_CONDITION,AFTER_CLOSING,AFTER_QUOTE,BRACKET");
+});
+
 test("hardened YAML parses and no longer reports persistence or floating pins", yamlOptions, () => {
   const ref = `actions/checkout@${SHA}`;
   const source = "on: push\npermissions: {contents: read}\njobs:\n  build:\n    steps:\n      - name: Checkout\n        uses: actions/checkout@v7\n        with: # retain comment\n          fetch-depth: 0\n      - run: npm test\n";

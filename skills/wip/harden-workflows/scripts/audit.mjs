@@ -38,10 +38,42 @@ function writesOf(permissions) {
   return Object.entries(permissions).filter(([, level]) => level === "write").map(([scope]) => scope).join(",");
 }
 
-// The expressions in a workflow value: each `${{ ... }}`, and an `if:` condition, which is an expression even unwrapped.
-function expressionsIn(value, key) {
-  const wrapped = [...value.matchAll(/\$\{\{([\s\S]*?)\}\}/g)].map((match) => match[1]);
-  return key === "if" && wrapped.length === 0 ? [value] : wrapped;
+// Expression string literals are single-quoted, with '' for a quote. The index just past the literal opening at
+// `start`, or the text's length when it never closes.
+function literalEnd(text, start) {
+  for (let index = start + 1; index < text.length; index++) {
+    if (text[index] !== "'") continue;
+    if (text[index + 1] === "'") index++;
+    else return index + 1;
+  }
+  return text.length;
+}
+
+// The expressions in a workflow value: each `${{ ... }}` (a `}}` inside a string literal doesn't close it), and for a
+// job or step `if:` condition, which is an expression even unwrapped, the whole value when nothing is wrapped.
+function expressionsIn(value, isCondition) {
+  const expressions = [];
+  for (let open = value.indexOf("${{"); open !== -1; open = value.indexOf("${{", open)) {
+    let index = open + 3;
+    while (index < value.length && !value.startsWith("}}", index)) {
+      index = value[index] === "'" ? literalEnd(value, index) : index + 1;
+    }
+    expressions.push(value.slice(open + 3, index));
+    open = index + 2;
+  }
+  return isCondition && expressions.length === 0 ? [value] : expressions;
+}
+
+// Where the expression's string literals are, so a `secrets.X` written inside one isn't taken for a reference.
+function literalRanges(expression) {
+  const ranges = [];
+  for (let index = 0; index < expression.length; index++) {
+    if (expression[index] !== "'") continue;
+    const end = literalEnd(expression, index);
+    ranges.push([index, end]);
+    index = end - 1;
+  }
+  return ranges;
 }
 
 // The secrets context, case-insensitive like every expression context: `secrets.NAME` or `secrets['NAME']` names one;
@@ -50,19 +82,34 @@ const SECRETS_REFERENCE = /(?<![\w.-])secrets\b(?:\s*\.\s*([A-Za-z_][\w-]*)|\s*\
 
 function secretsIn(job) {
   const names = new Set();
-  function visit(value, key) {
+  function visit(value, isCondition = false) {
     if (typeof value === "string") {
-      for (const expression of expressionsIn(value, key)) {
+      for (const expression of expressionsIn(value, isCondition)) {
+        const literals = literalRanges(expression);
         for (const match of expression.matchAll(SECRETS_REFERENCE)) {
+          if (literals.some(([start, end]) => match.index >= start && match.index < end)) continue;
           const literal = match[1] ?? match[2] ?? match[3];
           names.add(literal ?? (match[4] !== undefined ? "(dynamic)" : "(all)"));
         }
       }
     } else if (value && typeof value === "object") {
-      for (const [childKey, child] of Object.entries(value)) visit(child, childKey);
+      for (const child of Object.values(value)) visit(child);
     }
   }
-  visit(job, undefined);
+  // Only a job's and a step's `if:` are conditions; an `if` elsewhere (an action input, say) is plain text.
+  for (const [key, value] of Object.entries(job)) {
+    if (key === "steps" && Array.isArray(value)) {
+      for (const step of value) {
+        if (step && typeof step === "object" && !Array.isArray(step)) {
+          for (const [stepKey, stepValue] of Object.entries(step)) visit(stepValue, stepKey === "if");
+        } else {
+          visit(step);
+        }
+      }
+    } else {
+      visit(value, key === "if");
+    }
+  }
   if (job.secrets === "inherit") names.add("(inherit)");
   else if (job.secrets && typeof job.secrets === "object") {
     for (const name of Object.keys(job.secrets)) names.add(`passed:${name}`);
