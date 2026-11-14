@@ -25,13 +25,65 @@ export function validatePins(pins) {
 
 // Recognize block mappings and sequences only. This is a text editor, not a YAML parser:
 // opaque layouts are retained, and a target inside one is refused rather than guessed at.
+// The quote that opens a quoted scalar without closing it on the same line (its body continues on the next lines),
+// or null. A double-quoted scalar escapes with backslashes; a single-quoted one doubles the quote.
+function unterminatedQuote(value) {
+  const quote = value[0];
+  if (quote !== '"' && quote !== "'") return null;
+  return quoteEnd(value, 1, quote) === -1 ? quote : null;
+}
+
+function quoteEnd(text, from, quote) {
+  for (let index = from; index < text.length; index++) {
+    if (quote === '"' && text[index] === "\\") index++;
+    else if (text[index] === quote && quote === "'" && text[index + 1] === "'") index++;
+    else if (text[index] === quote) return index;
+  }
+  return -1;
+}
+
+// Values this editor can't delimit, so the lines after them can't be told apart from structure: an anchor or tag before
+// a value (its scalar may continue on the next lines), and a flow collection that doesn't close on its line. A file with
+// one is refused before anything is written, rather than risk editing text inside a string.
+function unsupportedOpener(value) {
+  if (/^[&!]/.test(value)) return "anchors and tags before a value are unsupported";
+  if (/^[{[]/.test(value) && !flowClosesOnLine(value)) return "flow collections spanning lines are unsupported";
+  return null;
+}
+
+function flowClosesOnLine(value) {
+  let depth = 0;
+  for (let index = 0; index < value.length; index++) {
+    const char = value[index];
+    if (char === '"' || char === "'") {
+      index = quoteEnd(value, index + 1, char);
+      if (index === -1) return false;
+    } else if (char === "#" && /\s/.test(value[index - 1] ?? " ")) {
+      break;
+    } else if (char === "{" || char === "[") {
+      depth++;
+    } else if (char === "}" || char === "]") {
+      depth--;
+    }
+  }
+  return depth === 0;
+}
+
+const BLOCK_SCALAR_HEADER = /^[|>](?:[1-9][+-]?|[+-][1-9]?)?[ \t]*(?:#.*)?$/;
+
 function scan(lines) {
   const stack = [];
   const nodes = [];
   const opaque = [];
   let blockIndent = null;
+  let openQuote = null;
   for (let index = 0; index < lines.length; index++) {
     const text = lines[index].text;
+    // Inside a quoted scalar that spans lines: its body is string content, never YAML structure, and is left as is.
+    if (openQuote) {
+      if (quoteEnd(text, 0, openQuote) !== -1) openQuote = null;
+      continue;
+    }
     if (!text.trim() || /^\s*#/.test(text)) continue;
     const indent = text.match(/^ */)[0].length;
     if (blockIndent !== null && indent > blockIndent) continue;
@@ -51,18 +103,29 @@ function scan(lines) {
     } else {
       while (stack.length && stack.at(-1).indent >= indent) stack.pop();
     }
+    if (/^("[\w-]+"|'[\w-]+'|[\w-]+|<<):[ ]*\t/.test(body)) refuse(index, "a tab before a value is unsupported");
+    // `run :` is a valid key too; unrecognized, its block's lines would be read as structure.
+    if (/^("[\w-]+"|'[\w-]+'|[\w-]+|<<)[ \t]+:(?:[ \t]|$)/.test(body)) refuse(index, "space before ':' is unsupported");
     const mapping = /^("[\w-]+"|'[\w-]+'|[\w-]+|<<):(?: +(.*))?$/.exec(body);
     if (!mapping) {
+      if (item) {
+        const opener = unsupportedOpener(body) ?? (unterminatedQuote(body) ? "quoted scalars spanning lines in a sequence are unsupported" : null);
+        if (opener) refuse(index, opener);
+      }
       opaque.push({ line: index, parent: stack.at(-1), text });
+      if (item && BLOCK_SCALAR_HEADER.test(body)) blockIndent = indent;
       continue;
     }
     const key = mapping[1].replace(/^['"]|['"]$/g, "");
     const value = mapping[2] ?? "";
+    const opener = unsupportedOpener(value);
+    if (opener) refuse(index, opener);
     const node = { key, value, line: index, indent: keyIndent, parent: stack.at(-1), children: [] };
     node.parent?.children.push(node);
     nodes.push(node);
     if (!value || value.startsWith("#")) stack.push(node);
-    if (/^[|>](?:[1-9][+-]?|[+-][1-9]?)?(?:\s+#.*)?$/.test(value)) blockIndent = keyIndent;
+    if (BLOCK_SCALAR_HEADER.test(value)) blockIndent = keyIndent;
+    openQuote = unterminatedQuote(value);
   }
   return { nodes, opaque };
 }

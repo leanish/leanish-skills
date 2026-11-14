@@ -60,6 +60,46 @@ test("preserves CRLF, missing final newline, comments and shell block contents",
   assert.equal(harden(source, PINS), expected);
 });
 
+test("leaves a block scalar alone when its header has trailing whitespace", () => {
+  const source = workflow("      - run: |  \n          cat <<'EOF'\n          uses: actions/setup-java@v6\n          EOF\n      - uses: actions/setup-java@v6\n");
+  const expected = source.replace("      - uses: actions/setup-java@v6\n", `      - uses: ${PINS["actions/setup-java@v6"]}\n`);
+  assert.equal(harden(source, PINS), expected);
+});
+
+test("leaves a block scalar sequence item alone", () => {
+  const source = workflow("      - run: echo\n        env:\n          LIST: x\n      - uses: actions/setup-java@v6\n") +
+    "    services:\n      - |\n        uses: actions/setup-java@v6\n";
+  const expected = source.replace("      - uses: actions/setup-java@v6\n", `      - uses: ${PINS["actions/setup-java@v6"]}\n`);
+  assert.equal(harden(source, PINS), expected);
+});
+
+for (const [kind, open, close] of [["double", '"', '"'], ["single", "'", "'"]]) {
+  test(`leaves a multiline ${kind}-quoted scalar alone`, () => {
+    const body = kind === "double" ? 'echo \\"one\n          uses: actions/setup-java@v6\n          two\\"' : "echo ''one\n          uses: actions/setup-java@v6\n          two''";
+    const source = workflow(`      - run: ${open}${body}${close}\n      - uses: actions/setup-java@v6\n`);
+    const expected = source.replace("      - uses: actions/setup-java@v6\n", `      - uses: ${PINS["actions/setup-java@v6"]}\n`);
+    assert.equal(harden(source, PINS), expected);
+  });
+}
+
+// Layouts whose scalars this editor can't delimit: the whole file is refused, so text inside them is never edited.
+for (const [layout, step, reason] of [
+  ["an anchored quoted scalar", '      - run: &script "echo\n          uses: actions/setup-java@v6"\n', /anchors and tags/],
+  ["a tagged quoted scalar", '      - run: !!str "echo\n          uses: actions/setup-java@v6"\n', /anchors and tags/],
+  ["an anchored block scalar", "      - run: &script |\n          uses: actions/setup-java@v6\n", /anchors and tags/],
+  ["a tab before a block header", "      - run:\t|\n          uses: actions/setup-java@v6\n", /tab before a value/],
+  ["a quoted string in a multiline flow mapping", '      - env: {A: "x\n          uses: actions/setup-java@v6 y"}\n', /flow collections spanning lines/],
+  // The continuation sits at the step mapping key's indentation, so indentation alone can't mark it as string content.
+  ["a flow string continued at the key's indentation", '      - env: {A: "x\n        uses: actions/setup-java@v6"}\n', /flow collections spanning lines/],
+  ["a space before the key's colon", "      - run : |\n          cat <<'EOF'\n          uses: actions/setup-java@v6\n          EOF\n", /space before ':'/],
+  ["a space before a quoted key's colon", "      - \"run\" : |\n          cat <<'EOF'\n          uses: actions/setup-java@v6\n          EOF\n", /space before ':'/],
+]) {
+  test(`refuses the file with ${layout}`, () => {
+    const source = workflow(step + "      - uses: actions/setup-java@v6\n");
+    assert.throws(() => harden(source, PINS), reason);
+  });
+}
+
 test("supports indentless step sequences and already-pinned checkout refs", () => {
   const source = `jobs:\n  build:\n    steps:\n    - uses: actions/checkout@${SHA} # v7\n`;
   assert.equal(harden(source, {}), source + "      with:\n        persist-credentials: false\n");
