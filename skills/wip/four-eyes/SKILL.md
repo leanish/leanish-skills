@@ -86,7 +86,9 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
     node "$SCRIPT" <label> --prompt-file /tmp/msg.md      # or --message "..."
 
 - **One label per task, reused**: it holds Codex's thread, so send only what's new.
-  Open a second label only for separate work running in parallel.
+  Open a second label only for separate work running in parallel. Labels that
+  differ only in case count as the same: a new one is refused when another spelling
+  exists.
 - **Sol** at high for everything. **Astra** to break a tie (see Settling), and
   **Astra** or **Luna** when the user or a skill asks for them: `--model astra|luna` (plus `--effort` if needed) on the
   same label, for one call. The user can override any model or effort.

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, mkdtempSync, open, readFileSync, realpathSync, symlinkSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -446,7 +446,7 @@ function sandbox() {
   const pidOf = (name) => Number(readFileSync(join(root, name), "utf8"));
   const recordFile = (label) => join(root, "state", "labels", `${label}.json`);
   const record = (label) => JSON.parse(readFileSync(recordFile(label), "utf8"));
-  const lockFile = (label) => join(root, "state", "labels", `${label}.lock`);
+  const lockFile = (label) => join(root, "state", "labels", `${label.toLowerCase()}.lock`);
   return { root, bin, work, env, plan, limits, run, start, calls, polls, pidOf, record, recordFile, lockFile };
 }
 
@@ -668,6 +668,94 @@ test("a stale or malformed lock is reported, not taken over", () => {
   writeFileSync(s.lockFile("task"), "garbage");
   assert.match(s.run(["task", "--message", "x"]).stderr, /malformed lock file/);
   assert.equal(s.calls().length, 1);
+});
+
+test("refuses a label that differs only in case from an existing one", () => {
+  const s = sandbox();
+  assert.equal(s.run(["Task", "--message", "first"]).status, 0);
+  for (const args of [["task", "--message", "second"], ["--show", "TASK"], ["--reset", "tAsk"]]) {
+    const result = s.run(args);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /differs only in case from the existing "Task"/);
+  }
+  assert.equal(s.calls().length, 1);
+  assert.equal(s.record("Task").rounds, 1);
+});
+
+test("a call waiting on its prompt sees a differently cased label created meanwhile", async () => {
+  const s = sandbox();
+  // The prompt file is a FIFO: opening its write end returns only once the call has opened it to read its prompt.
+  const fifo = join(s.root, "prompt.fifo");
+  assert.equal(spawnSync("mkfifo", [fifo]).status, 0);
+  const waiting = s.start(["Task", "--prompt-file", fifo]);
+  let stderr = "";
+  waiting.stderr.on("data", (chunk) => (stderr += chunk));
+  const done = new Promise((resolve) => waiting.on("close", (code) => resolve(code)));
+  const writer = await new Promise((resolve, reject) => open(fifo, "w", (error, fd) => (error ? reject(error) : resolve(fd))));
+  // The first call is now reading its prompt; meanwhile another one creates "task".
+  assert.equal(s.run(["task", "--message", "other task"]).status, 0);
+  writeSync(writer, "first task\n");
+  closeSync(writer);
+  assert.notEqual(await done, 0);
+  assert.match(stderr, /differs only in case from the existing "task"/);
+  assert.equal(s.calls().length, 1);
+});
+
+test("an empty lock under the older name blocks the label: its owner may not have written its pid yet", () => {
+  const s = sandbox();
+  mkdirSync(join(s.root, "state", "labels"), { recursive: true });
+  writeFileSync(join(s.root, "state", "labels", "Task.lock"), "");
+
+  const result = s.run(["Task", "--message", "x"]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /locked by a malformed lock file/);
+  assert.equal(s.calls().length, 0);
+});
+
+test("a running call also holds the older lock name, so an older wrapper started after it is kept out", async () => {
+  const s = sandbox();
+  s.plan("slow");
+  const child = s.start(["Task", "--message", "slow review"]);
+  const done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
+  const legacy = join(s.root, "state", "labels", "Task.lock");
+  await waitFor(() => existsSync(s.recordFile("Task")) && existsSync(legacy));
+  assert.equal(Number(readFileSync(legacy, "utf8")), child.pid);
+  child.kill("SIGTERM");
+  await done;
+  assert.equal(existsSync(legacy), false);
+  assert.equal(existsSync(s.lockFile("Task")), false);
+});
+
+test("a running call under an older, differently cased lock name blocks the label", (t) => {
+  const s = sandbox();
+  const holder = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+  t.after(() => holder.kill());
+  mkdirSync(join(s.root, "state", "labels"), { recursive: true });
+  writeFileSync(join(s.root, "state", "labels", "Task.lock"), `${holder.pid}\n`);
+
+  const result = s.run(["Task", "--message", "x"]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, new RegExp(`busy: pid ${holder.pid}`));
+  assert.equal(s.calls().length, 0);
+});
+
+test("labels whose records already both exist stay usable by their exact names", (t) => {
+  const s = sandbox();
+  const labels = join(s.root, "state", "labels");
+  mkdirSync(labels, { recursive: true });
+  writeFileSync(join(labels, "Probe"), "");
+  const caseInsensitive = existsSync(join(labels, "probe"));
+  if (caseInsensitive) return t.skip("needs a case-sensitive filesystem to hold both records");
+  assert.equal(s.run(["Task", "--message", "first"]).status, 0);
+  const other = { ...JSON.parse(readFileSync(join(labels, "Task.json"), "utf8")), threadId: "thread-of-task" };
+  writeFileSync(join(labels, "task.json"), JSON.stringify(other));
+
+  assert.match(s.run(["--show", "task"]).stdout, /thread-of-task/);
+  assert.doesNotMatch(s.run(["--show", "Task"]).stdout, /thread-of-task/);
+  assert.equal(s.run(["Task", "--message", "second"]).status, 0);
+  assert.notEqual(s.run(["TASK", "--message", "third"]).status, 0);
 });
 
 test("a stopped call kills codex, records the failure and releases the lock", async () => {
