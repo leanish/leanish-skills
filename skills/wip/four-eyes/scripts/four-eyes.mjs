@@ -25,7 +25,7 @@ import {
   writeSync,
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const STATE_DIR = process.env.FOUR_EYES_HOME || join(homedir(), ".claude", "four-eyes");
@@ -59,7 +59,7 @@ const RETRY_NOTE =
   "Note: your previous attempt at this message stopped on a Codex usage limit. Check what you " +
   "already did (files changed, commands run) before continuing, and don't redo it.\n\n";
 
-let heldLock = null; // the lock file this process owns
+let heldLocks = []; // the lock files this process owns
 let currentChild = null; // the running codex process, if any
 let cancelledBy = null; // the signal that cancelled this run, if any
 
@@ -185,38 +185,43 @@ function lockHeldMessage(label, path) {
 // two callers could otherwise both take it and run on the same thread.
 function acquireLock(label) {
   ensureDir(LABELS_DIR);
-  const path = lockPath(label);
+  const canonical = lockPath(label);
+  takeLock(label, canonical);
+  // Earlier versions lock the label as given (`Task.lock`). Holding that name too keeps an older wrapper out, whichever
+  // starts first; on a case-insensitive filesystem it's the same file as the canonical lock, already held.
+  const legacy = join(LABELS_DIR, `${label}.lock`);
+  if (legacy !== canonical && !sameFile(legacy, canonical)) takeLock(label, legacy);
+}
+
+// An existing lock blocks even when it's empty or unreadable: its owner may not have written its pid yet.
+function takeLock(label, path) {
   try {
     writeFileSync(path, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
   } catch (err) {
     die(err.code === "EEXIST" ? lockHeldMessage(label, path) : `cannot create lock ${path}: ${err.message}`);
   }
-  heldLock = path;
-  // Earlier versions named the lock with the label as given: on a case-sensitive filesystem such a lock, held by a
-  // call still running, doesn't block this one's name, so it's checked here.
-  const legacy = readdirSync(LABELS_DIR).find((entry) =>
-    entry !== basename(path) && entry.toLowerCase() === basename(path) && lockOwnerAlive(join(LABELS_DIR, entry)));
-  if (legacy) die(lockHeldMessage(label, join(LABELS_DIR, legacy)));
+  heldLocks.push(path);
 }
 
-function lockOwnerAlive(path) {
+function sameFile(a, b) {
   try {
-    const pid = Number(readFileSync(path, "utf8").trim());
-    return Number.isInteger(pid) && pid > 0 && pidAlive(pid);
+    const [first, second] = [statSync(a), statSync(b)];
+    return first.dev === second.dev && first.ino === second.ino;
   } catch {
     return false;
   }
 }
 
-// Removes the lock only if this process still owns it.
+// Removes the locks only if this process still owns them.
 function releaseLock() {
-  if (!heldLock) return;
-  try {
-    if (Number(readFileSync(heldLock, "utf8").trim()) === process.pid) rmSync(heldLock, { force: true });
-  } catch {
-    /* already gone */
+  for (const path of heldLocks) {
+    try {
+      if (Number(readFileSync(path, "utf8").trim()) === process.pid) rmSync(path, { force: true });
+    } catch {
+      /* already gone */
+    }
   }
-  heldLock = null;
+  heldLocks = [];
 }
 
 function takeValue(argv, i, flag) {

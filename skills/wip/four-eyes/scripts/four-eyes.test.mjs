@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, mkdtempSync, open, readFileSync, realpathSync, symlinkSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -684,16 +684,47 @@ test("refuses a label that differs only in case from an existing one", () => {
 
 test("a call waiting on its prompt sees a differently cased label created meanwhile", async () => {
   const s = sandbox();
-  const waiting = s.start(["Task", "--stdin"]);
+  // The prompt file is a FIFO: opening its write end returns only once the call has opened it to read its prompt.
+  const fifo = join(s.root, "prompt.fifo");
+  assert.equal(spawnSync("mkfifo", [fifo]).status, 0);
+  const waiting = s.start(["Task", "--prompt-file", fifo]);
   let stderr = "";
   waiting.stderr.on("data", (chunk) => (stderr += chunk));
   const done = new Promise((resolve) => waiting.on("close", (code) => resolve(code)));
-  // While the first call still waits for its prompt, another one creates "task".
+  const writer = await new Promise((resolve, reject) => open(fifo, "w", (error, fd) => (error ? reject(error) : resolve(fd))));
+  // The first call is now reading its prompt; meanwhile another one creates "task".
   assert.equal(s.run(["task", "--message", "other task"]).status, 0);
-  waiting.stdin.end("first task\n");
+  writeSync(writer, "first task\n");
+  closeSync(writer);
   assert.notEqual(await done, 0);
   assert.match(stderr, /differs only in case from the existing "task"/);
   assert.equal(s.calls().length, 1);
+});
+
+test("an empty lock under the older name blocks the label: its owner may not have written its pid yet", () => {
+  const s = sandbox();
+  mkdirSync(join(s.root, "state", "labels"), { recursive: true });
+  writeFileSync(join(s.root, "state", "labels", "Task.lock"), "");
+
+  const result = s.run(["Task", "--message", "x"]);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /locked by a malformed lock file/);
+  assert.equal(s.calls().length, 0);
+});
+
+test("a running call also holds the older lock name, so an older wrapper started after it is kept out", async () => {
+  const s = sandbox();
+  s.plan("slow");
+  const child = s.start(["Task", "--message", "slow review"]);
+  const done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
+  const legacy = join(s.root, "state", "labels", "Task.lock");
+  await waitFor(() => existsSync(s.recordFile("Task")) && existsSync(legacy));
+  assert.equal(Number(readFileSync(legacy, "utf8")), child.pid);
+  child.kill("SIGTERM");
+  await done;
+  assert.equal(existsSync(legacy), false);
+  assert.equal(existsSync(s.lockFile("Task")), false);
 });
 
 test("a running call under an older, differently cased lock name blocks the label", (t) => {
@@ -718,9 +749,11 @@ test("labels whose records already both exist stay usable by their exact names",
   const caseInsensitive = existsSync(join(labels, "probe"));
   if (caseInsensitive) return t.skip("needs a case-sensitive filesystem to hold both records");
   assert.equal(s.run(["Task", "--message", "first"]).status, 0);
-  writeFileSync(join(labels, "task.json"), readFileSync(join(labels, "Task.json")));
+  const other = { ...JSON.parse(readFileSync(join(labels, "Task.json"), "utf8")), threadId: "thread-of-task" };
+  writeFileSync(join(labels, "task.json"), JSON.stringify(other));
 
-  assert.equal(s.run(["--show", "task"]).status, 0);
+  assert.match(s.run(["--show", "task"]).stdout, /thread-of-task/);
+  assert.doesNotMatch(s.run(["--show", "Task"]).stdout, /thread-of-task/);
   assert.equal(s.run(["Task", "--message", "second"]).status, 0);
   assert.notEqual(s.run(["TASK", "--message", "third"]).status, 0);
 });
