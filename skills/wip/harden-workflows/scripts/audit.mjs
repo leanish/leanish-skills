@@ -77,8 +77,9 @@ function literalRanges(expression) {
 }
 
 // The secrets context, case-insensitive like every expression context: `secrets.NAME` or `secrets['NAME']` names one;
-// an index that isn't a literal is "(dynamic)", and the whole context (e.g. toJSON(secrets)) is "(all)".
-const SECRETS_REFERENCE = /(?<![\w.-])secrets\b(?:\s*\.\s*([A-Za-z_][\w-]*)|\s*\[\s*(?:'([^']*)'|"([^"]*)"|([^\]]*))\s*\])?/gi;
+// an index that isn't a literal is "(dynamic)", and the whole context (e.g. toJSON(secrets)) is "(all)". A `secrets`
+// after a dot, spaces allowed (`github . secrets`, `fromJSON(...) . secrets`), is a property, not the context.
+const SECRETS_REFERENCE = /(?<![\w.-])(?<!\.\s*)secrets\b(?:\s*\.\s*([A-Za-z_][\w-]*)|\s*\[\s*(?:'([^']*)'|"([^"]*)"|([^\]]*))\s*\])?/gi;
 
 function secretsIn(job) {
   const names = new Set();

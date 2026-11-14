@@ -125,10 +125,13 @@ test("ignores secrets mentioned in string literals and if: outside job and step 
         CLOSING: "${{ format('}}{0}', secrets.AFTER_CLOSING) }}",
         QUOTE: "${{ format('it''s', secrets.AFTER_QUOTE) }}",
         BRACKET: "${{ secrets['BRACKET'] }}",
+        SPACED_PROPERTY: "${{ github . secrets }}",
+        JSON_PROPERTY: "${{ fromJSON('{\"secrets\":{\"X\":\"public\"}}') . secrets.X }}",
+        SPACED_ACCESS: "${{ secrets . SPACED_ACCESS }}",
       } },
     ],
   } } }, "repo", "ci.yml");
-  assert.equal(row[6], "STEP_CONDITION,AFTER_CLOSING,AFTER_QUOTE,BRACKET");
+  assert.equal(row[6], "STEP_CONDITION,AFTER_CLOSING,AFTER_QUOTE,BRACKET,SPACED_ACCESS");
 });
 
 test("hardened YAML parses and no longer reports persistence or floating pins", yamlOptions, () => {
