@@ -19,6 +19,9 @@ npx skills@latest add leanish/leanish-skills --skill four-eyes -a claude-code
 npx skills@latest add leanish/leanish-skills --skill frugality -a codex
 ```
 
+Each skill works on its own; release-flow and four-eyes point to each other for more detail, so install them
+together when you use both (`--skill four-eyes --skill release-flow`).
+
 Each skill is then invoked using your agent's own convention — e.g. `/four-eyes` in Claude
 Code, `$frugality` in Codex.
 
