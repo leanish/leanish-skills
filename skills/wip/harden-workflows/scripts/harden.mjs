@@ -25,13 +25,38 @@ export function validatePins(pins) {
 
 // Recognize block mappings and sequences only. This is a text editor, not a YAML parser:
 // opaque layouts are retained, and a target inside one is refused rather than guessed at.
+// The quote that opens a quoted scalar without closing it on the same line (its body continues on the next lines),
+// or null. A double-quoted scalar escapes with backslashes; a single-quoted one doubles the quote.
+function unterminatedQuote(value) {
+  const quote = value[0];
+  if (quote !== '"' && quote !== "'") return null;
+  return quoteEnd(value, 1, quote) === -1 ? quote : null;
+}
+
+function quoteEnd(text, from, quote) {
+  for (let index = from; index < text.length; index++) {
+    if (quote === '"' && text[index] === "\\") index++;
+    else if (text[index] === quote && quote === "'" && text[index + 1] === "'") index++;
+    else if (text[index] === quote) return index;
+  }
+  return -1;
+}
+
+const BLOCK_SCALAR_HEADER = /^[|>](?:[1-9][+-]?|[+-][1-9]?)?[ \t]*(?:#.*)?$/;
+
 function scan(lines) {
   const stack = [];
   const nodes = [];
   const opaque = [];
   let blockIndent = null;
+  let openQuote = null;
   for (let index = 0; index < lines.length; index++) {
     const text = lines[index].text;
+    // Inside a quoted scalar that spans lines: its body is string content, never YAML structure, and is left as is.
+    if (openQuote) {
+      if (quoteEnd(text, 0, openQuote) !== -1) openQuote = null;
+      continue;
+    }
     if (!text.trim() || /^\s*#/.test(text)) continue;
     const indent = text.match(/^ */)[0].length;
     if (blockIndent !== null && indent > blockIndent) continue;
@@ -54,6 +79,7 @@ function scan(lines) {
     const mapping = /^("[\w-]+"|'[\w-]+'|[\w-]+|<<):(?: +(.*))?$/.exec(body);
     if (!mapping) {
       opaque.push({ line: index, parent: stack.at(-1), text });
+      if (item && BLOCK_SCALAR_HEADER.test(body)) blockIndent = indent;
       continue;
     }
     const key = mapping[1].replace(/^['"]|['"]$/g, "");
@@ -62,7 +88,8 @@ function scan(lines) {
     node.parent?.children.push(node);
     nodes.push(node);
     if (!value || value.startsWith("#")) stack.push(node);
-    if (/^[|>](?:[1-9][+-]?|[+-][1-9]?)?(?:\s+#.*)?$/.test(value)) blockIndent = keyIndent;
+    if (BLOCK_SCALAR_HEADER.test(value)) blockIndent = keyIndent;
+    openQuote = unterminatedQuote(value);
   }
   return { nodes, opaque };
 }

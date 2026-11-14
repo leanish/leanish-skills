@@ -60,6 +60,28 @@ test("preserves CRLF, missing final newline, comments and shell block contents",
   assert.equal(harden(source, PINS), expected);
 });
 
+test("leaves a block scalar alone when its header has trailing whitespace", () => {
+  const source = workflow("      - run: |  \n          cat <<'EOF'\n          uses: actions/setup-java@v6\n          EOF\n      - uses: actions/setup-java@v6\n");
+  const expected = source.replace("      - uses: actions/setup-java@v6\n", `      - uses: ${PINS["actions/setup-java@v6"]}\n`);
+  assert.equal(harden(source, PINS), expected);
+});
+
+test("leaves a block scalar sequence item alone", () => {
+  const source = workflow("      - run: echo\n        env:\n          LIST: x\n      - uses: actions/setup-java@v6\n") +
+    "    services:\n      - |\n        uses: actions/setup-java@v6\n";
+  const expected = source.replace("      - uses: actions/setup-java@v6\n", `      - uses: ${PINS["actions/setup-java@v6"]}\n`);
+  assert.equal(harden(source, PINS), expected);
+});
+
+for (const [kind, open, close] of [["double", '"', '"'], ["single", "'", "'"]]) {
+  test(`leaves a multiline ${kind}-quoted scalar alone`, () => {
+    const body = kind === "double" ? 'echo \\"one\n          uses: actions/setup-java@v6\n          two\\"' : "echo ''one\n          uses: actions/setup-java@v6\n          two''";
+    const source = workflow(`      - run: ${open}${body}${close}\n      - uses: actions/setup-java@v6\n`);
+    const expected = source.replace("      - uses: actions/setup-java@v6\n", `      - uses: ${PINS["actions/setup-java@v6"]}\n`);
+    assert.equal(harden(source, PINS), expected);
+  });
+}
+
 test("supports indentless step sequences and already-pinned checkout refs", () => {
   const source = `jobs:\n  build:\n    steps:\n    - uses: actions/checkout@${SHA} # v7\n`;
   assert.equal(harden(source, {}), source + "      with:\n        persist-credentials: false\n");
