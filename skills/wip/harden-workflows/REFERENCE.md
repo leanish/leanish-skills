@@ -122,7 +122,8 @@ Registry notes:
 
   It edits text so comments and layout survive, and refuses a file (non-zero exit, that file untouched) when a
   floating ref already has a comment, a checkout already sets `persist-credentials` (even to `false`), or the layout
-  is one it can't place a key in safely. Files processed before a refusal stay edited: check `git status`.
+  is one it can't place a key in safely. It also refuses a symbolic link, and a file under `.github/` reached through a
+  linked directory outside its checkout. Files processed before a refusal stay edited: check `git status`.
 
 ## Out of scope
 
