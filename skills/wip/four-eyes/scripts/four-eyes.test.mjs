@@ -803,3 +803,12 @@ test("bad arguments fail clearly", () => {
   assert.match(badPoll.stderr, /invalid FOUR_EYES_RECHECK_SECONDS: soon/);
   assert.equal(s.calls().length, 0);
 });
+
+test("runs when invoked through a symbolic link", () => {
+  const dir = mkdtempSync(join(tmpdir(), "four-eyes-link-"));
+  const link = join(dir, "four-eyes.mjs");
+  symlinkSync(realpathSync(SCRIPT), link);
+  const result = spawnSync(process.execPath, [link, "--help"], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /four-eyes/i);
+});

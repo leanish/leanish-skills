@@ -18,6 +18,7 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -960,8 +961,9 @@ async function main() {
 }
 
 // Run the CLI only when executed directly; importing (e.g. from tests) does not.
-// Guard argv[1] — a bare dynamic import (`node -e "import(...)"`) leaves it unset.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Guard argv[1] — a bare dynamic import (`node -e "import(...)"`) leaves it unset. argv[1] is the path as invoked,
+// while import.meta.url is the real file, so a symlinked install (a linked skills directory, say) is resolved first.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   process.on("exit", () => {
     reaper.reap();
     releaseLock();
