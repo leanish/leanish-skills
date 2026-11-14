@@ -95,6 +95,23 @@ test("marks run steps and deduplicates secrets across a job", () => {
   assert.equal(row[8], "yes");
 });
 
+test("reads secret references inside expressions only, in every supported form", () => {
+  const [row] = auditWorkflow({ jobs: { build: {
+    if: "secrets.CONDITION != ''",
+    steps: [
+      { run: "echo secrets.NOT_AN_EXPRESSION", env: {
+        SPACED: "${{ secrets[ 'SPACED' ] }}",
+        CASED: "${{ Secrets.CASED }}",
+        DYNAMIC: "${{ secrets[matrix.secret] }}",
+        ALL: "${{ toJSON(secrets) }}",
+        TWO: "${{ secrets.FIRST || secrets.SECOND }}",
+        OTHER_CONTEXT: "${{ github.secrets }}",
+      } },
+    ],
+  } } }, "repo", "ci.yml");
+  assert.equal(row[6], "CONDITION,SPACED,CASED,(dynamic),(all),FIRST,SECOND");
+});
+
 test("hardened YAML parses and no longer reports persistence or floating pins", yamlOptions, () => {
   const ref = `actions/checkout@${SHA}`;
   const source = "on: push\npermissions: {contents: read}\njobs:\n  build:\n    steps:\n      - name: Checkout\n        uses: actions/checkout@v7\n        with: # retain comment\n          fetch-depth: 0\n      - run: npm test\n";

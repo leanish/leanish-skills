@@ -38,16 +38,31 @@ function writesOf(permissions) {
   return Object.entries(permissions).filter(([, level]) => level === "write").map(([scope]) => scope).join(",");
 }
 
+// The expressions in a workflow value: each `${{ ... }}`, and an `if:` condition, which is an expression even unwrapped.
+function expressionsIn(value, key) {
+  const wrapped = [...value.matchAll(/\$\{\{([\s\S]*?)\}\}/g)].map((match) => match[1]);
+  return key === "if" && wrapped.length === 0 ? [value] : wrapped;
+}
+
+// The secrets context, case-insensitive like every expression context: `secrets.NAME` or `secrets['NAME']` names one;
+// an index that isn't a literal is "(dynamic)", and the whole context (e.g. toJSON(secrets)) is "(all)".
+const SECRETS_REFERENCE = /(?<![\w.-])secrets\b(?:\s*\.\s*([A-Za-z_][\w-]*)|\s*\[\s*(?:'([^']*)'|"([^"]*)"|([^\]]*))\s*\])?/gi;
+
 function secretsIn(job) {
   const names = new Set();
-  function visit(value) {
+  function visit(value, key) {
     if (typeof value === "string") {
-      for (const match of value.matchAll(/secrets(?:\.([A-Za-z0-9_]+)|\[['"]([^'"\]]+)['"]\])/g)) names.add(match[1] ?? match[2]);
+      for (const expression of expressionsIn(value, key)) {
+        for (const match of expression.matchAll(SECRETS_REFERENCE)) {
+          const literal = match[1] ?? match[2] ?? match[3];
+          names.add(literal ?? (match[4] !== undefined ? "(dynamic)" : "(all)"));
+        }
+      }
     } else if (value && typeof value === "object") {
-      for (const child of Object.values(value)) visit(child);
+      for (const [childKey, child] of Object.entries(value)) visit(child, childKey);
     }
   }
-  visit(job);
+  visit(job, undefined);
   if (job.secrets === "inherit") names.add("(inherit)");
   else if (job.secrets && typeof job.secrets === "object") {
     for (const name of Object.keys(job.secrets)) names.add(`passed:${name}`);
