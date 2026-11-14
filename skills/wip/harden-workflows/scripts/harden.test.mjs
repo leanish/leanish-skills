@@ -82,6 +82,22 @@ for (const [kind, open, close] of [["double", '"', '"'], ["single", "'", "'"]]) 
   });
 }
 
+// Layouts whose scalars this editor can't delimit: the whole file is refused, so text inside them is never edited.
+for (const [layout, step, reason] of [
+  ["an anchored quoted scalar", '      - run: &script "echo\n          uses: actions/setup-java@v6"\n', /anchors and tags/],
+  ["a tagged quoted scalar", '      - run: !!str "echo\n          uses: actions/setup-java@v6"\n', /anchors and tags/],
+  ["an anchored block scalar", "      - run: &script |\n          uses: actions/setup-java@v6\n", /anchors and tags/],
+  ["a tab before a block header", "      - run:\t|\n          uses: actions/setup-java@v6\n", /tab before a value/],
+  ["a quoted string in a multiline flow mapping", '      - env: {A: "x\n          uses: actions/setup-java@v6 y"}\n', /flow collections spanning lines/],
+  // The continuation sits at the step mapping key's indentation, so indentation alone can't mark it as string content.
+  ["a flow string continued at the key's indentation", '      - env: {A: "x\n        uses: actions/setup-java@v6"}\n', /flow collections spanning lines/],
+]) {
+  test(`refuses the file with ${layout}`, () => {
+    const source = workflow(step + "      - uses: actions/setup-java@v6\n");
+    assert.throws(() => harden(source, PINS), reason);
+  });
+}
+
 test("supports indentless step sequences and already-pinned checkout refs", () => {
   const source = `jobs:\n  build:\n    steps:\n    - uses: actions/checkout@${SHA} # v7\n`;
   assert.equal(harden(source, {}), source + "      with:\n        persist-credentials: false\n");

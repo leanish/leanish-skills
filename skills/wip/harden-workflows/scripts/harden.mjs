@@ -42,6 +42,33 @@ function quoteEnd(text, from, quote) {
   return -1;
 }
 
+// Values this editor can't delimit, so the lines after them can't be told apart from structure: an anchor or tag before
+// a value (its scalar may continue on the next lines), and a flow collection that doesn't close on its line. A file with
+// one is refused before anything is written, rather than risk editing text inside a string.
+function unsupportedOpener(value) {
+  if (/^[&!]/.test(value)) return "anchors and tags before a value are unsupported";
+  if (/^[{[]/.test(value) && !flowClosesOnLine(value)) return "flow collections spanning lines are unsupported";
+  return null;
+}
+
+function flowClosesOnLine(value) {
+  let depth = 0;
+  for (let index = 0; index < value.length; index++) {
+    const char = value[index];
+    if (char === '"' || char === "'") {
+      index = quoteEnd(value, index + 1, char);
+      if (index === -1) return false;
+    } else if (char === "#" && /\s/.test(value[index - 1] ?? " ")) {
+      break;
+    } else if (char === "{" || char === "[") {
+      depth++;
+    } else if (char === "}" || char === "]") {
+      depth--;
+    }
+  }
+  return depth === 0;
+}
+
 const BLOCK_SCALAR_HEADER = /^[|>](?:[1-9][+-]?|[+-][1-9]?)?[ \t]*(?:#.*)?$/;
 
 function scan(lines) {
@@ -76,14 +103,21 @@ function scan(lines) {
     } else {
       while (stack.length && stack.at(-1).indent >= indent) stack.pop();
     }
+    if (/^("[\w-]+"|'[\w-]+'|[\w-]+|<<):[ ]*\t/.test(body)) refuse(index, "a tab before a value is unsupported");
     const mapping = /^("[\w-]+"|'[\w-]+'|[\w-]+|<<):(?: +(.*))?$/.exec(body);
     if (!mapping) {
+      if (item) {
+        const opener = unsupportedOpener(body) ?? (unterminatedQuote(body) ? "quoted scalars spanning lines in a sequence are unsupported" : null);
+        if (opener) refuse(index, opener);
+      }
       opaque.push({ line: index, parent: stack.at(-1), text });
       if (item && BLOCK_SCALAR_HEADER.test(body)) blockIndent = indent;
       continue;
     }
     const key = mapping[1].replace(/^['"]|['"]$/g, "");
     const value = mapping[2] ?? "";
+    const opener = unsupportedOpener(value);
+    if (opener) refuse(index, opener);
     const node = { key, value, line: index, indent: keyIndent, parent: stack.at(-1), children: [] };
     node.parent?.children.push(node);
     nodes.push(node);
