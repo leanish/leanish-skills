@@ -399,13 +399,16 @@ function finish() {
   const text = "reply " + (n + 1);
   out({ type: "item.completed", item: { type: "agent_message", text } });
   if (scenario === "nocomplete") process.exit(0);
-  fs.writeFileSync(args[args.indexOf("-o") + 1], text);
+  // A long reply (2 MB) goes only to the -o file, to check the wrapper doesn't cut it off when it then exits as
+  // cancelled; written as an event, this fake's own process.exit() could cut it first.
+  fs.writeFileSync(args[args.indexOf("-o") + 1], scenario === "finish-on-term-large" ? text + "\\n" + "x".repeat(2000000) : text);
   out({ type: "turn.completed", usage: { input_tokens: 10, output_tokens: 2 } });
   process.exit(0);
 }
-if (scenario === "finish-on-term") {
+if (scenario === "finish-on-term" || scenario === "finish-on-term-large") {
   // Completes its turn right when it is asked to stop, as a turn finishing at that moment would.
   process.on("SIGTERM", finish);
+  fs.writeFileSync(path.join(dir, "handler-ready"), "");
   setInterval(() => {}, 1000);
 } else if (scenario === "slow" || scenario === "break-record" || scenario === "orphans") setTimeout(finish, 3000);
 else finish();
@@ -681,7 +684,7 @@ test("a stopped call kills codex, records the failure and releases the lock", as
   const done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
   await waitFor(() => existsSync(s.recordFile("task")));
   child.kill("SIGTERM");
-  assert.notEqual(await done, 0);
+  assert.equal(await done, 130);
   assert.equal(s.record("task").lastStatus, "failed");
   assert.equal(alive(s.pidOf("exec.pid")), false);
   assert.equal(existsSync(s.lockFile("task")), false);
@@ -694,14 +697,39 @@ test("a turn that completes after a stop keeps its reply and round, but the run 
   let stdout = "";
   child.stdout.on("data", (chunk) => (stdout += chunk));
   const done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
-  await waitFor(() => existsSync(s.recordFile("task")) && existsSync(join(s.root, "exec.pid")));
-  await new Promise((resolve) => setTimeout(resolve, 200)); // let the fake install its handler
+  await waitFor(() => existsSync(join(s.root, "handler-ready")));
   child.kill("SIGTERM");
   assert.equal(await done, 130);
   assert.match(stdout, /reply 1/);
   assert.equal(s.record("task").lastStatus, "succeeded");
   assert.equal(s.record("task").rounds, 1);
   assert.equal(existsSync(s.lockFile("task")), false);
+});
+
+test("a long reply completed after a stop reaches a pipe whole", async () => {
+  const s = sandbox();
+  s.plan("finish-on-term-large");
+  const child = s.start(["task", "--message", "review"]);
+  let bytes = 0;
+  let stderr = "";
+  child.stdout.on("data", (chunk) => (bytes += chunk.length));
+  child.stderr?.on("data", (chunk) => (stderr += chunk));
+  const done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
+  await waitFor(() => existsSync(join(s.root, "handler-ready")));
+  child.kill("SIGTERM");
+  assert.equal(await done, 130, stderr);
+  assert.equal(bytes, "reply 1\n".length + 2000000 + "\n".length, stderr);
+});
+
+test("a closed output pipe doesn't turn a cancelled run into a success", async () => {
+  const s = sandbox();
+  s.plan("finish-on-term-large");
+  const child = s.start(["task", "--message", "review"]);
+  const done = new Promise((resolve) => child.on("close", (code) => resolve(code)));
+  await waitFor(() => existsSync(join(s.root, "handler-ready")));
+  child.stdout.destroy(); // nobody reads the reply: writing it fails with EPIPE
+  child.kill("SIGTERM");
+  assert.equal(await done, 130);
 });
 
 test("a stopped call also stops the commands codex started in their own process groups", async () => {

@@ -93,7 +93,8 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
 - Every call is read-only unless it passes `--write`: for implementing, or for
   builds and tests that write (then tell Codex to change nothing beyond build
   output); repeat a call blocked by the sandbox with it. Codex works in the
-  directory you call from. stdout is its reply.
+  directory you call from. stdout is its reply. Exit 130 means the run was
+  stopped by a signal; a turn that completed anyway still prints its reply.
 - Run calls as background tasks of the session (Bash `run_in_background`), not
   detached with `nohup`, so the user sees them and the session is told when they
   end. Detach only around a restart, with a watcher. A task belongs to the

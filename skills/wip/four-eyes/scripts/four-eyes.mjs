@@ -857,9 +857,13 @@ async function callCodex(opts) {
           ` log=${result.logFile}`
       );
       const message = result.outcome.message;
+      if (cancelledBy) {
+        // The turn did complete (and stays recorded), but the run was cancelled: say so in the exit status. Set before
+        // writing and left to the normal exit, not process.exit(), so a long reply still drains into a pipe.
+        process.exitCode = 130;
+        process.stderr.write(`[four-eyes] error: interrupted by ${cancelledBy} after the turn completed (kept as round ${record.rounds})\n`);
+      }
       process.stdout.write(message.endsWith("\n") ? message : `${message}\n`);
-      // The turn did complete (and stays recorded), but the run was cancelled: say so in the exit status.
-      if (cancelledBy) die(`interrupted by ${cancelledBy} after the turn completed (kept as round ${record.rounds})`, 130);
       return;
     }
     if (cancelledBy) {
@@ -929,7 +933,8 @@ Manage:
   --budget          Codex's current usage, resets and credits (no model call)
   --list | --show <label> | --reset <label>
 
-stdout is Codex's reply; stderr has a status line, or the error with its log.
+stdout is Codex's reply; stderr has a status line, or the error with its log. Exit 130: the run was
+stopped by a signal (a turn that completed anyway still prints its reply and counts as a round).
 Logs: ${LOG_DIR} (last ${LOG_KEEP}). A label runs one call at a time.
 Codex works in the directory the wrapper is called from.
 `
@@ -972,7 +977,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     reaper.reap();
     releaseLock();
   });
-  process.stdout.on("error", (err) => (err.code === "EPIPE" ? process.exit(0) : die(err.message))); // e.g. `--list | head`
+  // A closed pipe (`--list | head`) is fine, but it doesn't undo a cancellation.
+  process.stdout.on("error", (err) => (err.code === "EPIPE" ? process.exit(cancelledBy ? 130 : 0) : die(err.message)));
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => {
       cancelledBy = signal;
