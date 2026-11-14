@@ -670,6 +670,18 @@ test("a stale or malformed lock is reported, not taken over", () => {
   assert.equal(s.calls().length, 1);
 });
 
+test("refuses a label that differs only in case from an existing one", () => {
+  const s = sandbox();
+  assert.equal(s.run(["Task", "--message", "first"]).status, 0);
+  for (const args of [["task", "--message", "second"], ["--show", "TASK"], ["--reset", "tAsk"]]) {
+    const result = s.run(args);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /differs only in case from the existing "Task"/);
+  }
+  assert.equal(s.calls().length, 1);
+  assert.equal(s.record("Task").rounds, 1);
+});
+
 test("a stopped call kills codex, records the failure and releases the lock", async () => {
   const s = sandbox();
   s.plan("slow");

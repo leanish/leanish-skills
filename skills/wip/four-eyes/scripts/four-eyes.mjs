@@ -83,6 +83,20 @@ function requireValidLabel(label) {
   }
 }
 
+// Labels that differ only in case would share one record and lock on a case-insensitive filesystem (macOS's default),
+// so one call would resume the other's thread. Refuse a label when the state directory already has one that matches it
+// ignoring case, on every filesystem, so the rule doesn't depend on the machine.
+function requireNoCaseCollision(label) {
+  if (!existsSync(LABELS_DIR)) return;
+  const wanted = new Set([`${label}.json`, `${label}.lock`]);
+  for (const entry of readdirSync(LABELS_DIR)) {
+    const match = [...wanted].find((name) => name.toLowerCase() === entry.toLowerCase());
+    if (match && !wanted.has(entry)) {
+      die(`label "${label}" differs only in case from the existing "${entry.replace(/\.(json|lock)$/, "")}"; use that one, or another name`);
+    }
+  }
+}
+
 const recordPath = (label) => join(LABELS_DIR, `${label}.json`);
 const lockPath = (label) => join(LABELS_DIR, `${label}.lock`);
 
@@ -815,6 +829,7 @@ async function attemptCall({ label, record, prompt, call }) {
 async function callCodex(opts) {
   if (!opts.label) die("a <label> is required");
   requireValidLabel(opts.label);
+  requireNoCaseCollision(opts.label);
   const prompt = resolvePrompt(opts);
   if (prompt.trim() === "") die("a prompt is required (--prompt-file, --message, --stdin, or -- <words>)");
 
@@ -945,12 +960,14 @@ async function main() {
   if (opts.list) return printList();
   if (opts.show != null) {
     requireValidLabel(opts.show);
+    requireNoCaseCollision(opts.show);
     const record = loadRecord(opts.show);
     if (!record) die(`no thread for label: ${opts.show}`);
     return process.stdout.write(`${JSON.stringify(record, null, 2)}\n`);
   }
   if (opts.reset != null) {
     requireValidLabel(opts.reset);
+    requireNoCaseCollision(opts.reset);
     acquireLock(opts.reset);
     const existed = existsSync(recordPath(opts.reset));
     rmSync(recordPath(opts.reset), { force: true });
