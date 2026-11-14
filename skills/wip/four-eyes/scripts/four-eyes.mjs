@@ -18,6 +18,7 @@ import {
   openSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
   statSync,
@@ -959,9 +960,21 @@ async function main() {
   await callCodex(opts);
 }
 
+// argv[1] is the path as invoked, while import.meta.url is the real file, so a symlinked install (a linked skills
+// directory, say) is resolved first. When argv[1] isn't a file (`node -` reading a script from stdin), it's compared as
+// given, which never matches.
+function invokedScriptUrl(argument) {
+  try {
+    return pathToFileURL(realpathSync(argument)).href;
+  } catch (error) {
+    if (error.code !== "ENOENT" && error.code !== "ENOTDIR") throw error;
+    return pathToFileURL(argument).href;
+  }
+}
+
 // Run the CLI only when executed directly; importing (e.g. from tests) does not.
 // Guard argv[1] — a bare dynamic import (`node -e "import(...)"`) leaves it unset.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === invokedScriptUrl(process.argv[1])) {
   process.on("exit", () => {
     reaper.reap();
     releaseLock();
