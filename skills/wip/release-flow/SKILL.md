@@ -12,7 +12,9 @@ description: >-
 # Release Flow
 
 Follow repo-specific release docs (for example, `docs/releasing.md`) for that
-repo's specifics. Use these defaults otherwise. This flow works in both agents.
+repo's specifics. Use these defaults otherwise. This flow works in both agents and
+on its own: links to other skills (four-eyes) point to more detail when they are
+installed, and nothing here depends on them.
 
 ## Release candidates
 
@@ -29,12 +31,15 @@ every changed area and reports every finding, of any severity, in one reply,
 never stopping at the first blocker. Make all the fixes a candidate gets together
 on main through their own PR, then tag a new candidate and start again at step 1.
 
-1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run two read-only
-   reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
-   Follow [four-eyes](../four-eyes/SKILL.md): a checklist reviewer checks each
-   changed behavior against fixed risky cases, with same/better/worse evidence;
-   a gap-hunter gets only the diff and "What does this break that worked before,
-   or let through?" Give the gap-hunter no checklist or implementation explanation.
+1. **Cheap reviewers.** Run two read-only reviewers in parallel on
+   `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
+   A checklist reviewer checks each changed behavior against fixed risky cases, with
+   same/better/worse evidence; a gap-hunter gets only the diff and "What does this
+   break that worked before, or let through?" Give the gap-hunter no checklist or
+   implementation explanation. In Claude Code they are Haiku sub-agents (the
+   [four-eyes](../four-eyes/SKILL.md) skill sets them up, when it's installed); in
+   Codex, the cheapest model as two sub-agents, or two passes of your own in fresh
+   contexts. This step needs nothing beyond what it says here.
 2. **Unprimed review.** Whoever didn't implement the last iteration reviews the
    whole state, in a fresh context (a new thread, label or sub-agent) that keeps
    it independent. An iteration is one round of implementation: what went into

@@ -47,7 +47,8 @@ Settle each step before the next. Corrections and follow-ups, including later
 requests from the user, go through the same loop; if you changed something before
 Codex saw the plan, tell the user. At the end, tell the user what was done, what
 was skipped and why, and what is unresolved. Releases follow
-[release-flow](../release-flow/SKILL.md).
+[release-flow](../release-flow/SKILL.md) when it's installed (`npx skills add
+leanish/leanish-skills --skill release-flow`); without it, the repo's own release docs.
 
 ## Roles
 
