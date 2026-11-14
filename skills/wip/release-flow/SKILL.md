@@ -58,7 +58,8 @@ release tag and repins. Never defer it until after the release.
 
 - Block only on findings new or worse than the deployed release: weakened
   verification or gates, wrong data, aborted runs, a new security exposure (an
-  actor can do something they couldn't before), or a published statement that is
+  actor can do something they aren't meant to be able to do), or a published
+  statement that is
   materially false (docs, CHANGELOG or help that would lead someone to a wrong
   action or a false sense of safety). The implementer judges each finding against
   this rule; don't treat every finding as required work. An exploitable finding
