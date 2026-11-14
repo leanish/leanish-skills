@@ -22,7 +22,8 @@ worth if that code is hostile. Background, sources and the scripts' contract: [R
 
 1. **Inventory.** `scripts/fetch-workflows.sh <owner> <empty dir> [repo...]` saves the default branch's workflows of
    the repositories `gh` can see (archived ones skipped), then `node scripts/audit.mjs <dir>` prints one row per job:
-   triggers, *declared* permissions, write scopes, referenced secrets, checkouts, external refs (unpinned ones
+   triggers, *declared* permissions, write scopes, referenced secrets (named ones, `(dynamic)` for a computed index,
+   `(all)` for the whole context), checkouts, external refs (unpinned ones
    marked) and whether it has steps that *may* run repository code. The table finds candidates; it doesn't resolve
    called workflows, workflow-level `env`, or what an action runs (Gradle's dependency submission builds the project
    without a `run:` step). Read the workflows and the actions before judging a row.

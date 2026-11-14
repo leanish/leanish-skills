@@ -99,6 +99,41 @@ test("marks run steps and deduplicates secrets across a job", () => {
   assert.equal(row[8], "yes");
 });
 
+test("reads secret references inside expressions only, in every supported form", () => {
+  const [row] = auditWorkflow({ jobs: { build: {
+    if: "secrets.CONDITION != ''",
+    steps: [
+      { run: "echo secrets.NOT_AN_EXPRESSION", env: {
+        SPACED: "${{ secrets[ 'SPACED' ] }}",
+        CASED: "${{ Secrets.CASED }}",
+        DYNAMIC: "${{ secrets[matrix.secret] }}",
+        ALL: "${{ toJSON(secrets) }}",
+        TWO: "${{ secrets.FIRST || secrets.SECOND }}",
+        OTHER_CONTEXT: "${{ github.secrets }}",
+      } },
+    ],
+  } } }, "repo", "ci.yml");
+  assert.equal(row[6], "CONDITION,SPACED,CASED,(dynamic),(all),FIRST,SECOND");
+});
+
+test("ignores secrets mentioned in string literals and if: outside job and step conditions", () => {
+  const [row] = auditWorkflow({ jobs: { build: {
+    steps: [
+      { if: "secrets.STEP_CONDITION != ''", uses: "owner/action@v1", with: {
+        if: "secrets.ACTION_INPUT",
+        LITERAL: "${{ format('secrets.NOT_A_REFERENCE') }}",
+        CLOSING: "${{ format('}}{0}', secrets.AFTER_CLOSING) }}",
+        QUOTE: "${{ format('it''s', secrets.AFTER_QUOTE) }}",
+        BRACKET: "${{ secrets['BRACKET'] }}",
+        SPACED_PROPERTY: "${{ github . secrets }}",
+        JSON_PROPERTY: "${{ fromJSON('{\"secrets\":{\"X\":\"public\"}}') . secrets.X }}",
+        SPACED_ACCESS: "${{ secrets . SPACED_ACCESS }}",
+      } },
+    ],
+  } } }, "repo", "ci.yml");
+  assert.equal(row[6], "STEP_CONDITION,AFTER_CLOSING,AFTER_QUOTE,BRACKET,SPACED_ACCESS");
+});
+
 test("hardened YAML parses and no longer reports persistence or floating pins", yamlOptions, () => {
   const ref = `actions/checkout@${SHA}`;
   const source = "on: push\npermissions: {contents: read}\njobs:\n  build:\n    steps:\n      - name: Checkout\n        uses: actions/checkout@v7\n        with: # retain comment\n          fetch-depth: 0\n      - run: npm test\n";
