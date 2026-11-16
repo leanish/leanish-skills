@@ -1,7 +1,7 @@
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +24,7 @@ import {
 } from "./four-eyes.mjs";
 
 const SCRIPT = join(fileURLToPath(new URL(".", import.meta.url)), "four-eyes.mjs");
+const TEST_FILE = fileURLToPath(import.meta.url);
 const lines = (...events) => events.map((e) => JSON.stringify(e)).join("\n");
 
 // Reads codex's whole stdout into an outcome, as the wrapper does line by line.
@@ -422,22 +423,43 @@ const CACHE = {
   ],
 };
 
-// The sandboxes not removed yet. After the file's tests, each one's started wrappers are stopped and awaited before its
-// directory goes, so none still writes into it, even when a test failed before stopping its own.
+// The sandboxes not removed yet. After the file's tests, each one's started wrappers are stopped and closed before its
+// directory goes, so none still writes into it, even when a test failed before stopping its own. Every sandbox is
+// attempted; the failures are reported together at the end.
 const sandboxes = new Set();
 after(async () => {
-  for (const s of [...sandboxes]) await s.remove();
+  const failures = (await Promise.allSettled([...sandboxes].map((s) => s.remove())))
+    .filter((result) => result.status === "rejected").map((result) => result.reason);
+  if (failures.length > 0) throw new AggregateError(failures, `${failures.length} test sandbox(es) not fully removed`);
 });
 
-// Stops a started wrapper and waits for it to exit. SIGTERM lets it stop codex and what codex started; SIGKILL follows if
-// it hasn't exited within 10 s.
-async function stopStarted(child) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
-  const exited = new Promise((resolve) => child.once("exit", resolve));
-  child.kill("SIGTERM");
+// Stops a started wrapper, if it's still running, and waits until its output is closed. SIGTERM lets it stop codex and
+// what codex started; SIGKILL follows after 10 s, and after 15 s this gives up with an error.
+async function stopStarted({ child, closed }) {
+  if (child.exitCode === null && child.signalCode === null) child.kill("SIGTERM");
   const escalation = setTimeout(() => child.kill("SIGKILL"), 10_000);
-  await exited;
+  let deadline;
+  const gaveUp = new Promise((resolve) => (deadline = setTimeout(resolve, 15_000, true)));
+  const timedOut = await Promise.race([closed.then(() => false), gaveUp]);
   clearTimeout(escalation);
+  clearTimeout(deadline);
+  if (timedOut) throw new Error(`wrapper ${child.pid} still had its output open 15 s after it was stopped`);
+}
+
+// The "orphans" scenario's detached commands outlive a wrapper that finished normally. Stops the ones still running,
+// checking the command first so a pid since reused by another process is left alone.
+function stopFixtureOrphans(root) {
+  const file = join(root, "orphans.json");
+  if (!existsSync(file)) return;
+  for (const pid of JSON.parse(readFileSync(file, "utf8"))) {
+    const command = spawnSync("ps", ["-o", "command=", "-p", String(pid)], { encoding: "utf8" }).stdout;
+    if (!command.includes("setInterval")) continue;
+    try {
+      process.kill(-pid, "SIGKILL"); // detached: it leads its own process group
+    } catch (err) {
+      if (err.code !== "ESRCH") throw err;
+    }
+  }
 }
 
 // An isolated home: fake codex (the only codex on PATH), model cache and state.
@@ -467,7 +489,7 @@ function sandbox() {
   const run = (args, cwd = work) => spawnSync(process.execPath, [SCRIPT, ...args], { env, cwd, encoding: "utf8" });
   const start = (args) => {
     const child = spawn(process.execPath, [SCRIPT, ...args], { env, cwd: work });
-    started.push(child);
+    started.push({ child, closed: new Promise((resolve) => child.once("close", resolve)) });
     return child;
   };
   const calls = () =>
@@ -480,8 +502,16 @@ function sandbox() {
   const box = { root, bin, work, env, plan, limits, run, start, calls, polls, pidOf, record, recordFile, lockFile, remove };
   async function remove() {
     sandboxes.delete(box);
-    await Promise.all(started.map(stopStarted));
-    rmSync(root, { recursive: true, force: true });
+    const problems = (await Promise.allSettled(started.map(stopStarted)))
+      .filter((result) => result.status === "rejected").map((result) => result.reason);
+    for (const step of [() => stopFixtureOrphans(root), () => rmSync(root, { recursive: true, force: true })]) {
+      try {
+        step();
+      } catch (err) {
+        problems.push(err);
+      }
+    }
+    if (problems.length > 0) throw new AggregateError(problems, `sandbox ${root} not fully removed`);
   }
   sandboxes.add(box);
   return box;
@@ -515,6 +545,45 @@ test("removing a sandbox stops a call its test left running", async () => {
   assert.notEqual(child.exitCode ?? child.signalCode, null);
   assert.equal(existsSync(s.root), false);
 });
+
+// The file's own teardown, checked from outside: a child `node --test` runs only the probe below, which fails on
+// purpose while its call is in a given state; afterwards no sandbox directory and none of its processes may be left.
+const TEARDOWN_PROBE = process.env.FOUR_EYES_TEARDOWN_PROBE;
+if (TEARDOWN_PROBE) {
+  test("teardown probe: a test fails with a call it started", async () => {
+    const s = sandbox();
+    s.plan({ running: "slow", finished: "ok", orphans: "orphans" }[TEARDOWN_PROBE]);
+    const child = s.start(["task", "--message", "review"]);
+    const exited = new Promise((resolve) => child.once("exit", resolve));
+    const pids = { wrapper: child.pid, orphans: [] };
+    if (TEARDOWN_PROBE === "running") await waitFor(() => existsSync(s.recordFile("task")));
+    else await exited; // "orphans": its detached commands outlive the wrapper's normal finish
+    if (TEARDOWN_PROBE === "orphans") pids.orphans = JSON.parse(readFileSync(join(s.root, "orphans.json"), "utf8"));
+    writeFileSync(process.env.FOUR_EYES_TEARDOWN_PIDS, JSON.stringify(pids));
+    throw new Error("teardown probe: failing on purpose");
+  });
+} else {
+  const cases = { running: "still running", finished: "already finished", orphans: "finished but its commands still running" };
+  for (const [probe, state] of Object.entries(cases)) {
+    test(`after a test fails with its call ${state}, the file's teardown leaves no directory or process`, async (t) => {
+      const dir = mkdtempSync(join(tmpdir(), "four-eyes-teardown-"));
+      t.after(() => rmSync(dir, { recursive: true, force: true }));
+      const tmp = join(dir, "tmp");
+      mkdirSync(tmp);
+      const pidsFile = join(dir, "pids.json");
+      const env = { ...process.env, TMPDIR: tmp, FOUR_EYES_TEARDOWN_PROBE: probe, FOUR_EYES_TEARDOWN_PIDS: pidsFile };
+      delete env.NODE_TEST_CONTEXT; // a plain run, not a subtest reporting to this one
+      const res = spawnSync(process.execPath, ["--test", "--test-name-pattern=^teardown probe", TEST_FILE], { env, encoding: "utf8" });
+      assert.notEqual(res.status, 0, res.stdout);
+      assert.match(res.stdout, /teardown probe: failing on purpose/);
+      assert.doesNotMatch(res.stdout, /not fully removed/);
+      assert.deepEqual(readdirSync(tmp), []);
+      const { wrapper, orphans } = JSON.parse(readFileSync(pidsFile, "utf8"));
+      assert.equal(orphans.length, probe === "orphans" ? 2 : 0);
+      for (const pid of [wrapper, ...orphans]) await waitFor(() => !alive(pid), 2000);
+    });
+  }
+}
 
 test("a first call starts a read-only Sol thread at high and records the label", () => {
   const s = sandbox();
@@ -813,11 +882,16 @@ test("reading the limits times out on a silent server and fails on a crashed one
 
 test("stopping a child that has already exited signals nothing, even if its pid is reused", async () => {
   const other = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  stopChild({ pid: other.pid, exitCode: 0, signalCode: null }); // an exited child whose pid is now `other`'s
-  await new Promise((resolve) => setTimeout(resolve, 100));
-  assert.equal(alive(other.pid), true);
-  other.kill("SIGKILL");
+  const closed = new Promise((resolve) => other.once("close", resolve));
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    stopChild({ pid: other.pid, exitCode: 0, signalCode: null }); // an exited child whose pid is now `other`'s
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.equal(alive(other.pid), true);
+  } finally {
+    other.kill("SIGKILL");
+    await closed;
+  }
 });
 
 test("a crashed limits server leaves no timer behind", async () => {
