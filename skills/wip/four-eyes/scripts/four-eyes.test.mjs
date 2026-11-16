@@ -450,14 +450,15 @@ async function stopStarted({ child, closed }) {
 }
 
 // Whether `pid` is still one of this sandbox's fixture commands: it leads its own process group (they're detached) and
-// its arguments carry the sandbox's marker. `ps` exits 1 with no output for a pid that's gone; anything else it can't
-// answer is an error, never a reason to signal.
-function isFixtureOrphan(pid, marker) {
-  const ps = spawnSync("ps", ["-o", "pgid=", "-o", "command=", "-p", String(pid)], { encoding: "utf8" });
-  if (ps.error) throw new Error(`ps failed for pid ${pid}: ${ps.error.message}`);
-  if (ps.status === 1 && ps.stdout.trim() === "") return false;
-  if (ps.status !== 0) throw new Error(`ps failed for pid ${pid}: status ${ps.status} ${ps.stderr.trim()}`);
-  const [, pgid, command] = /^\s*(\d+)\s+(.*)$/s.exec(ps.stdout) ?? [];
+// its arguments carry the sandbox's marker. `ps` exits 1 with no output at all, on stdout or stderr, for a pid that's
+// gone; anything else it can't answer is an error, never a reason to signal. A test can pass its own `ps`.
+const runPs = (pid) => spawnSync("ps", ["-o", "pgid=", "-o", "command=", "-p", String(pid)], { encoding: "utf8" });
+function isFixtureOrphan(pid, marker, ps = runPs) {
+  const result = ps(pid);
+  if (result.error) throw new Error(`ps failed for pid ${pid}: ${result.error.message}`);
+  if (result.status === 1 && result.stdout.trim() === "" && result.stderr.trim() === "") return false;
+  if (result.status !== 0) throw new Error(`ps failed for pid ${pid}: status ${result.status} ${result.stderr.trim()}`);
+  const [, pgid, command] = /^\s*(\d+)\s+(.*)$/s.exec(result.stdout) ?? [];
   return Number(pgid) === pid && command.includes(marker);
 }
 
@@ -567,6 +568,13 @@ test("removing a sandbox stops a call its test left running", async () => {
   await s.remove();
   assert.notEqual(child.exitCode ?? child.signalCode, null);
   assert.equal(existsSync(s.root), false);
+});
+
+test("a ps failure stops the fixture-command check instead of reading as a process that's gone", () => {
+  const answer = (result) => () => ({ error: undefined, ...result });
+  assert.equal(isFixtureOrphan(4242, "marker", answer({ status: 1, stdout: "", stderr: "" })), false);
+  assert.throws(() => isFixtureOrphan(4242, "marker", answer({ status: 1, stdout: "", stderr: "ps: failed to inspect processes\n" })),
+    /ps failed for pid 4242: status 1 ps: failed to inspect processes/);
 });
 
 test("the teardown leaves alone processes that aren't this sandbox's fixture commands", async (t) => {
