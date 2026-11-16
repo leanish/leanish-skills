@@ -29,7 +29,7 @@ Skills live under `skills/<category>/<name>/SKILL.md`. Two categories:
 ### `wip/` — leanish's own, work-in-progress
 
 Our first-party skills, still being shaped. New leanish skills land here too. They're licensed under
-Apache-2.0 ([LICENSE](./LICENSE)); a skill installed on its own doesn't include that file.
+Apache-2.0 ([LICENSE](./LICENSE)); that file is at the repository root, outside each skill's directory.
 
 - [four-eyes](./skills/wip/four-eyes/SKILL.md) — more certainty that the work is right from an
   external agent: Codex ("Chatz", on Sol, Astra or Luna) reviews the plan, the implementation and the final
