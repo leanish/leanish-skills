@@ -1,7 +1,7 @@
-import { test } from "node:test";
+import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,11 +9,11 @@ import {
   buildCodexArgs,
   chooseSettings,
   codexReady,
+  createOutcome,
   createReaper,
   descendantTargets,
   formatBudget,
   parseModelsCache,
-  parseTurnOutcome,
   rateLimitsProblem,
   readRateLimits,
   stopChild,
@@ -25,6 +25,13 @@ import {
 
 const SCRIPT = join(fileURLToPath(new URL(".", import.meta.url)), "four-eyes.mjs");
 const lines = (...events) => events.map((e) => JSON.stringify(e)).join("\n");
+
+// Reads codex's whole stdout into an outcome, as the wrapper does line by line.
+function parseTurnOutcome(stdout, lastMsgText = "") {
+  const outcome = createOutcome();
+  for (const line of stdout.split("\n")) outcome.add(line);
+  return outcome.result(lastMsgText);
+}
 
 // ---- Codex's event stream ----
 
@@ -415,9 +422,28 @@ const CACHE = {
   ],
 };
 
+// The sandboxes not removed yet. After the file's tests, each one's started wrappers are stopped and awaited before its
+// directory goes, so none still writes into it, even when a test failed before stopping its own.
+const sandboxes = new Set();
+after(async () => {
+  for (const s of [...sandboxes]) await s.remove();
+});
+
+// Stops a started wrapper and waits for it to exit. SIGTERM lets it stop codex and what codex started; SIGKILL follows if
+// it hasn't exited within 10 s.
+async function stopStarted(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  const exited = new Promise((resolve) => child.once("exit", resolve));
+  child.kill("SIGTERM");
+  const escalation = setTimeout(() => child.kill("SIGKILL"), 10_000);
+  await exited;
+  clearTimeout(escalation);
+}
+
 // An isolated home: fake codex (the only codex on PATH), model cache and state.
 function sandbox() {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "four-eyes-test-")));
+  const started = [];
   const bin = join(root, "bin");
   mkdirSync(bin);
   symlinkSync(process.execPath, join(bin, "node"));
@@ -439,7 +465,11 @@ function sandbox() {
   const plan = (...scenarios) => writeFileSync(join(root, "plan.json"), JSON.stringify(scenarios));
   const limits = (...answers) => writeFileSync(join(root, "limits.json"), JSON.stringify(answers));
   const run = (args, cwd = work) => spawnSync(process.execPath, [SCRIPT, ...args], { env, cwd, encoding: "utf8" });
-  const start = (args) => spawn(process.execPath, [SCRIPT, ...args], { env, cwd: work });
+  const start = (args) => {
+    const child = spawn(process.execPath, [SCRIPT, ...args], { env, cwd: work });
+    started.push(child);
+    return child;
+  };
   const calls = () =>
     existsSync(join(root, "calls.jsonl")) ? readFileSync(join(root, "calls.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l)) : [];
   const polls = () => (existsSync(join(root, "polls")) ? Number(readFileSync(join(root, "polls"), "utf8")) : 0);
@@ -447,7 +477,14 @@ function sandbox() {
   const recordFile = (label) => join(root, "state", "labels", `${label}.json`);
   const record = (label) => JSON.parse(readFileSync(recordFile(label), "utf8"));
   const lockFile = (label) => join(root, "state", "labels", `${label}.lock`);
-  return { root, bin, work, env, plan, limits, run, start, calls, polls, pidOf, record, recordFile, lockFile };
+  const box = { root, bin, work, env, plan, limits, run, start, calls, polls, pidOf, record, recordFile, lockFile, remove };
+  async function remove() {
+    sandboxes.delete(box);
+    await Promise.all(started.map(stopStarted));
+    rmSync(root, { recursive: true, force: true });
+  }
+  sandboxes.add(box);
+  return box;
 }
 
 const effortOf = (args) => args.find((a) => a.startsWith("model_reasoning_effort"));
@@ -468,6 +505,16 @@ async function waitFor(condition, timeoutMs = 5000) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
 }
+
+test("removing a sandbox stops a call its test left running", async () => {
+  const s = sandbox();
+  s.plan("slow");
+  const child = s.start(["task", "--message", "slow review"]);
+  await waitFor(() => existsSync(s.recordFile("task"))); // a test that failed here would leave the call running
+  await s.remove();
+  assert.notEqual(child.exitCode ?? child.signalCode, null);
+  assert.equal(existsSync(s.root), false);
+});
 
 test("a first call starts a read-only Sol thread at high and records the label", () => {
   const s = sandbox();
