@@ -1,14 +1,13 @@
 # Four Eyes — worked examples
 
-`SCRIPT=<absolute path to this skill>/scripts/four-eyes.mjs`, where `<absolute path to this skill>` is the
-"Base directory for this skill:" path shown when the skill is invoked. One label for the whole task, so Codex keeps
-every round.
+`$SCRIPT` and `<scratch>` are as in SKILL.md's "Calling Chatz": `<scratch>` always stands for the absolute path of
+this session's own directory, written out, inside prompt files too.
 
 ---
 
 ## A — Claude plans and implements (default)
 
-**Plan.** Claude writes its findings to `/tmp/cc-payments-review.md`:
+**Plan.** Claude writes its findings to `<scratch>/payments-review.md`:
 
 ```
 1. [worth doing: yes] `refundOrder` swallows the gateway error, so a failed
@@ -20,12 +19,12 @@ every round.
 and asks Codex:
 
 ```
-node "$SCRIPT" payments-review --prompt-file /tmp/cc-msg.md
+node "$SCRIPT" payments-review --prompt-file <scratch>/msg.md
 ```
 
-where `/tmp/cc-msg.md` says: *"Review the payments change (`git diff`) for
+where `<scratch>/msg.md` says: *"Review the payments change (`git diff`) for
 correctness and error handling. Write your findings first. Then read my review in
-/tmp/cc-payments-review.md and compare: agree or disagree with each item, with
+<scratch>/payments-review.md and compare: agree or disagree with each item, with
 reasons, and add what I missed."*
 
 > **Round 1** — Codex agrees on #1–#3 and adds #4: a retried refund can pay twice
@@ -76,10 +75,10 @@ results, and anything unresolved. Don't ask questions; report missing facts.
 Pass these read, write and network limits to any sub-agent.
 ```
 
-Write the brief to `/tmp/cc-cache-brief.md`, then call (this call only may write):
+Write the brief to `<scratch>/cache-brief.md`, then call (this call only may write):
 
 ```
-node "$SCRIPT" cache-ttl --write --prompt-file /tmp/cc-cache-brief.md
+node "$SCRIPT" cache-ttl --write --prompt-file <scratch>/cache-brief.md
 ```
 
 Use readable-path allowlists. Never list private folders as forbidden paths.
@@ -109,21 +108,20 @@ node "$SCRIPT" --budget
 ```
 
 Don't hold work back or warn about Codex usage. If a call actually fails, report
-its exact error. For a usage limit, use `--wait` as the fallback:
+its exact error. For a usage limit, use `--wait` as the fallback, run as a
+background task (see SKILL.md):
 
 ```
-node "$SCRIPT" cache-ttl --wait --prompt-file /tmp/cc-msg.md
+node "$SCRIPT" cache-ttl --wait --prompt-file <scratch>/msg.md
 ```
 
-Run this as an attached background task. In Claude Code, set Bash
-`run_in_background`; don't append `nohup`, `disown` or shell detachment.
-The user can see the task and the session gets a completion notice.
-
-It reads Codex's limits every minute (no model call) and retries once Codex is
-available, so switching to an account with budget is picked up within a minute.
-If the limits can't be read, it retries the call itself every 5 minutes. It keeps
-going for up to 2 days (`--wait=<hours>` to change it), whatever reset time Codex
-reports; `--budget` shows the same numbers beforehand.
+At the default polling interval, it reads Codex's limits every minute (no model
+call) and retries once they show Codex available, so switching to an account with
+budget is normally picked up at the next check. If Codex reported itself ready but
+the call still hit a limit, the next real retry waits 5 minutes; if the limits
+can't be read, it retries the call itself every 5 minutes. It keeps going for up
+to 2 days (`--wait=<hours>` to change it), whatever reset time Codex reports;
+`--budget` shows the same numbers beforehand.
 
 ---
 
@@ -172,9 +170,5 @@ Claude reads the full resulting diff as if Claude wrote it.
   Claude reviews Codex's version and combines the best of both in the main tree,
   then calls the same label from the main tree, read-only, so Codex reviews the
   combined result.
-- Keep long calls and services attached to background tasks. Detach only around
-  a restart, with a watcher that reports completion or failure on return.
 - If every resume of a thread fails with 404 (the thread is gone on the server),
   open a new label and brief it with what was agreed.
-- A lock left by a call that died: check with `ps` that its pid is gone, then delete
-  the `.lock` file the error names.
