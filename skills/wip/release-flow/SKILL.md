@@ -136,7 +136,8 @@ out without claiming there is none. Staying private doesn't change whether it bl
   using the full merge SHA, not a branch tip. Create the GitHub release with the
   fixes and a link to the CHANGELOG. If a publish workflow runs from that release and
   requires the merge commit's checks, wait until they are green first. Publish
-  packages to external registries only with the user's explicit OK.
+  packages to external registries only with the user's explicit OK; when creating
+  the release starts that publish, get the OK before creating the release.
 - Right after publishing, open a PR that only starts the next development
   version (for example, `X.Y.(Z+1)-SNAPSHOT`), adds the new CHANGELOG heading and
   updates docs pointing at it. Keep main carrying the next development version;
@@ -148,7 +149,7 @@ out without claiming there is none. Staying private doesn't change whether it bl
   `uses: owner/repo/.github/workflows/x.yml@<full-sha> # v<version>`.
   Require green checks on the repin PRs. A repository rename's redirect does not
   cover reusable-workflow `uses:`; repin with the new name. Later development
-  never moves a released tag or an adopter's pin.
+  never moves an adopter's pin.
 - Install released tools from the release commit in a stable checkout outside
   temp directories. Keep the user's configs and secret services. Never put
   credentials in Git, release notes, scheduling files or agent input.
