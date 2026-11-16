@@ -19,7 +19,7 @@ this session's own directory, written out, inside prompt files too.
 and asks Codex:
 
 ```
-node "$SCRIPT" payments-review --prompt-file <scratch>/msg.md
+node "$SCRIPT" payments-review --prompt-file "<scratch>/msg.md"
 ```
 
 where `<scratch>/msg.md` says: *"Review the payments change (`git diff`) for
@@ -78,7 +78,7 @@ Pass these read, write and network limits to any sub-agent.
 Write the brief to `<scratch>/cache-brief.md`, then call (this call only may write):
 
 ```
-node "$SCRIPT" cache-ttl --write --prompt-file <scratch>/cache-brief.md
+node "$SCRIPT" cache-ttl --write --prompt-file "<scratch>/cache-brief.md"
 ```
 
 Use readable-path allowlists. Never list private folders as forbidden paths.
@@ -112,7 +112,7 @@ its exact error. For a usage limit, use `--wait` as the fallback, run as a
 background task (see SKILL.md):
 
 ```
-node "$SCRIPT" cache-ttl --wait --prompt-file <scratch>/msg.md
+node "$SCRIPT" cache-ttl --wait --prompt-file "<scratch>/msg.md"
 ```
 
 At the default polling interval, it reads Codex's limits every minute (no model

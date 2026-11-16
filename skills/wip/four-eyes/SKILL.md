@@ -85,7 +85,7 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
     # <scratch> = the absolute path of a directory only this session uses (its scratchpad, or one made once with
     #   `mktemp -d`); write that path out everywhere, inside prompt files too: nothing expands it there
     SCRIPT=<absolute path to this skill>/scripts/four-eyes.mjs
-    node "$SCRIPT" <label> --prompt-file <scratch>/msg.md      # or --message "..."
+    node "$SCRIPT" <label> --prompt-file "<scratch>/msg.md"      # or --message "..."
 
 - **One label per task, reused**: it holds Codex's thread, so send only what's new.
   Open a second label only for separate work running in parallel, or for a review
