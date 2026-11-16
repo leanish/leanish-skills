@@ -100,24 +100,28 @@ function checkoutInsertion(uses, opaque) {
   return { after: withNode.line, text: `${" ".repeat(inputIndent)}persist-credentials: false` };
 }
 
+// GitHub resolves the owner and repository in `uses:` ignoring case (the ref keeps its case).
+const CHECKOUT = "actions/checkout@";
+
 export function harden(original, pins) {
   validatePins(pins);
   const lines = [...original.matchAll(/([^\r\n]*)(\r\n|\n|\r|$)/g)]
     .filter((match) => match[0]).map((match) => ({ text: match[1], eol: match[2] }));
   const { nodes, opaque } = scan(lines);
-  const targets = ["actions/checkout@", ...Object.keys(pins)];
+  // Pin keys match the uses: text exactly; a checkout is found in any case, as GitHub resolves it.
+  const mentionsTarget = (text) => text.toLowerCase().includes(CHECKOUT) || Object.keys(pins).some((ref) => text.includes(ref));
   for (const entry of opaque) {
-    if (targets.some((ref) => entry.text.includes(ref))) refuse(entry.line, "unsupported uses/step layout");
+    if (mentionsTarget(entry.text)) refuse(entry.line, "unsupported uses/step layout");
   }
   const insertions = new Map();
   for (const node of nodes) {
-    if (node.key !== "uses" && /^[\[{]/.test(node.value) && targets.some((ref) => node.value.includes(ref))) {
+    if (node.key !== "uses" && /^[\[{]/.test(node.value) && mentionsTarget(node.value)) {
       refuse(node.line, "unsupported flow layout containing a target ref");
     }
     if (node.key !== "uses") continue;
     const value = scalar(node.value);
     if (!value) refuse(node.line, "unsupported uses scalar");
-    const checkout = value.ref.startsWith("actions/checkout@");
+    const checkout = value.ref.toLowerCase().startsWith(CHECKOUT);
     const replacement = Object.hasOwn(pins, value.ref) ? scalar(pins[value.ref]) : null;
     if (!checkout && !replacement) continue;
     if (!isStep(node.parent) && !isJob(node.parent)) refuse(node.line, "uses is outside a supported job or step");

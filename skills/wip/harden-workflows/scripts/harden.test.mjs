@@ -121,6 +121,26 @@ test("refuses flow steps on the steps: line", () => {
   assert.throws(() => harden("jobs:\n  build:\n    steps: [{uses: actions/checkout@v7}]\n", PINS), /unsupported flow/);
 });
 
+// GitHub resolves the owner and repository in `uses:` ignoring case, so these are checkouts too.
+test("hardens a checkout spelled in another case and keeps its spelling", () => {
+  assert.equal(harden(workflow("      - uses: Actions/Checkout@V7\n"), {}),
+    workflow("      - uses: Actions/Checkout@V7\n        with:\n          persist-credentials: false\n"));
+});
+
+test("refuses layouts it can't edit holding a checkout spelled in another case", () => {
+  assert.throws(() => harden("jobs:\n  build:\n    steps: [{uses: Actions/Checkout@v7}]\n", {}), /unsupported flow/);
+  assert.throws(() => harden(workflow("      - {uses: ACTIONS/checkout@v7}\n"), {}), /unsupported uses\/step layout/);
+});
+
+test("pin keys match the uses: text exactly, case included", () => {
+  const pins = { "Actions/Checkout@v7": `Actions/Checkout@${SHA} # v7.0.1` };
+  assert.equal(harden(workflow("      - uses: Actions/Checkout@v7\n"), pins),
+    workflow(`      - uses: Actions/Checkout@${SHA} # v7.0.1\n        with:\n          persist-credentials: false\n`));
+  // A key spelled in another case doesn't match: the ref stays as written, and the audit still shows it unpinned.
+  assert.equal(harden(workflow("      - uses: actions/checkout@V7\n"), PINS),
+    workflow("      - uses: actions/checkout@V7\n        with:\n          persist-credentials: false\n"));
+});
+
 test("rejects malformed pins and CLI arguments", () => {
   const source = workflow("      - uses: actions/checkout@v7\n");
   for (const pins of [null, [], { "actions/checkout@v7": "actions/checkout@short" }, { "actions/checkout@v7": `other/action@${SHA}` }]) {
@@ -165,6 +185,15 @@ test("fetch discovers all pages, skips archived/missing workflows and saves raw 
   assert.ok(calls[0].some((arg) => arg.includes("isArchived: false")));
   assert.ok(!calls.some((args) => args[1].includes("/archived/contents")));
   assert.ok(calls.some((args) => args.includes("Accept: application/vnd.github.raw+json")));
+});
+
+test("fetch lists only repositories the owner owns", (t) => {
+  // GitHub's default also lists repositories the owner is a collaborator on, which repos/<owner>/<name> can't find.
+  const mock = mockGh(t);
+  const result = spawnSync("bash", [FETCH, "owner", join(mock.dir, "out")], { encoding: "utf8", env: mock.env });
+  assert.equal(result.status, 0, result.stderr);
+  const [listing] = readFileSync(mock.log, "utf8").trim().split("\n").map(JSON.parse);
+  assert.ok(listing.some((arg) => arg.includes("ownerAffiliations: OWNER")));
 });
 
 test("fetch scopes explicit repositories and refuses even hidden existing output before gh", (t) => {

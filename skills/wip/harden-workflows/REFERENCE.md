@@ -109,12 +109,16 @@ Registry notes:
 ## Scripts
 
 - `fetch-workflows.sh <owner> <out-dir> [repo...]`: needs `gh` authenticated; reads each repository's default branch
-  through the API, so it sees only repositories that login can read. Default: every non-archived repository of the
-  owner. Refuses a non-empty `out-dir`; writes `<out-dir>/<repo>/<workflow file>`.
-- `audit.mjs <dir>`: reads that layout, prints TSV with a header row. Needs the `yaml` package resolvable (run from a
-  directory where it's installed, or set `NODE_PATH`); exits 2 if it isn't.
+  through the API, so it sees only repositories that login can read. Default: every non-archived repository the owner
+  owns. Refuses a non-empty `out-dir`; writes `<out-dir>/<repo>/<workflow file>`.
+- `audit.mjs <dir>`: reads that layout (for a clone, pass `<clone>/.github`) and prints TSV with a header row. It
+  parses with the `yaml` package, which it loads and runs, taking the first copy it finds: in a `node_modules` beside
+  the script or in a folder above it (wherever the skill is installed, a project included), then from the current
+  directory and the folders above it, then `NODE_PATH`. Install `yaml` in a tooling directory you trust, outside the
+  repositories under review, run from there, and check that no `node_modules` above the installed skill holds another
+  copy. Exits 2 if it finds none.
 - `harden.mjs --pins <pins.json> <file>...`: edits the files in place (no dry run: work on a clone). `pins.json` maps a
-  floating ref to its pin, same action on both sides:
+  floating ref to its pin, same action on both sides; a key matches the `uses:` text exactly, case included:
 
   ```json
   { "actions/checkout@v7": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1" }

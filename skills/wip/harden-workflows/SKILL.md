@@ -32,9 +32,10 @@ worth if that code is hostile. Background, sources and the scripts' contract: [R
    credentials, floating action refs, then structural splits. `node scripts/harden.mjs --pins <pins.json> <file>...`
    edits files in place (persist-credentials, pins); it refuses files it can't edit safely, including a checkout that
    already sets `persist-credentials`, so pass only files that need it. Edit a clone, then open PRs.
-4. **Verify.** Re-run the audit on the edited files, parse every edited file, check that no job needs git credentials
-   after checkout (`git push`, fetching private repositories or submodules, `gh` without an explicit token), and
-   require green CI on every PR. Say what CI didn't exercise (workflow_dispatch jobs, publishing).
+4. **Verify.** Re-run the audit on the clone (`node scripts/audit.mjs <clone>/.github`; its repo column then reads
+   `workflows`, and it loads `yaml` as [Scripts](REFERENCE.md#scripts) says), parse every edited file, check that no
+   job needs git credentials after checkout (`git push`, fetching private repositories or submodules, `gh` without an
+   explicit token), and require green CI on every PR. Say what CI didn't exercise (workflow_dispatch jobs, publishing).
 5. **Report** what was fixed, what remains and why, per repository.
 
 ## Rules
