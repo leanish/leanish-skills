@@ -115,8 +115,8 @@ Registry notes:
   parses with the `yaml` package, which it loads and runs, taking the first copy it finds: in a `node_modules` beside
   the script or in a folder above it (wherever the skill is installed, a project included), then from the current
   directory and the folders above it, then `NODE_PATH`. Install `yaml` in a tooling directory you trust, outside the
-  repositories under review, run from there, and check that no `node_modules` above the installed skill holds another
-  copy. Exits 2 if it finds none.
+  repositories under review, run from there, and check that no `node_modules` beside the script or in any folder above
+  it holds another copy. Exits 2 if it finds none.
 - `harden.mjs --pins <pins.json> <file>...`: edits the files in place (no dry run: work on a clone). `pins.json` maps a
   floating ref to its pin, same action on both sides; a key matches the `uses:` text exactly, case included:
 
