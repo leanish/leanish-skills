@@ -431,12 +431,6 @@ export function createOutcome() {
   };
 }
 
-export function parseTurnOutcome(stdout, lastMsgText = "") {
-  const outcome = createOutcome();
-  for (const line of stdout.split("\n")) outcome.add(line);
-  return outcome.result(lastMsgText);
-}
-
 // What to signal besides a process: its descendants, as process groups when they have their own
 // (codex runs each command in a new group and leaves them running when it is stopped), or one by
 // one when they share ours. Empty when `ps` can't list processes.
@@ -470,8 +464,10 @@ function signalTarget(target, signal) {
 }
 
 // Tracks what this run asked to stop: whatever is still there when its grace period ends gets
-// SIGKILL, and then it is forgotten, so a reused pid or group id is never touched. `reap` does the
-// same synchronously for whatever is still in its grace period when the wrapper exits.
+// SIGKILL. After that escalation the entry is forgotten, and later `reap()` calls don't process it
+// again. Nothing checks process identity: a pid or group id reused by another process before the
+// escalation would be signalled too. `reap` does the same synchronously for whatever is still in its
+// grace period when the wrapper exits.
 export function createReaper(signal = signalTarget, graceMs = KILL_GRACE_MS) {
   const pending = new Set();
   const alive = (target) => signal(target, 0);
