@@ -7,7 +7,7 @@ description: Optimize agent execution cost.
 
 - Choose the approach with the lowest expected total execution cost.
 - Look for batch operations or small scripts when possible.
-- Delegate to a sub-agent running the latest available Luna model at its maximum supported effort, using `fork_turns=none`, when its expected total execution cost—including context transfer, coordination, and verification—is lower than completing the work directly.
+- Delegate to a Codex sub-agent running the latest available Luna model at its maximum supported effort, using `fork_turns=none`, when its expected total execution cost—including context transfer, coordination, and verification—is lower than completing the work directly.
 - When using a cheaper sub-agent, the main-agent should still perform the planning and final verification.
 - If Luna or sub-agents aren't available, do the work yourself.
 - Extra waiting time is acceptable when it reduces cost.
