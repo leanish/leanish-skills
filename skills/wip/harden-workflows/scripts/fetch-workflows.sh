@@ -17,7 +17,7 @@ command -v gh >/dev/null || die 'gh is required'
 if [[ $# -eq 0 ]]; then
   query='query($owner: String!, $endCursor: String) {
     repositoryOwner(login: $owner) {
-      repositories(first: 100, after: $endCursor, isArchived: false) {
+      repositories(first: 100, after: $endCursor, isArchived: false, ownerAffiliations: OWNER) {
         nodes { name }
         pageInfo { hasNextPage endCursor }
       }

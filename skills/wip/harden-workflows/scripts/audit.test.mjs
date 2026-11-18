@@ -87,6 +87,16 @@ test("marks checkout persistence and every floating external use", () => {
   assert.ok(row[9].includes("docker://alpine:latest (unpinned)"));
 });
 
+test("counts checkouts spelled in another case", () => {
+  // GitHub resolves the owner and repository in `uses:` ignoring case. The first checkout leaves
+  // persist-credentials at its default (persist); only the second sets it to false.
+  const [row] = auditWorkflow({ jobs: { build: { steps: [
+    { uses: "Actions/Checkout@v7" },
+    { uses: "ACTIONS/checkout@V7", with: { "persist-credentials": false } },
+  ] } } }, "repo", "ci.yml");
+  assert.equal(row[7], "persist,no-persist");
+});
+
 test("marks run steps and deduplicates secrets across a job", () => {
   const [row] = auditWorkflow({ jobs: { build: { steps: [
     { run: "npm test", env: { TOKEN: "${{ secrets.TOKEN }}", AGAIN: "${{ secrets.TOKEN }}", OTHER: "${{ secrets['OTHER'] }}", THIRD: '${{ secrets["THIRD"] }}' } },

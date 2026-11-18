@@ -65,7 +65,8 @@ export function auditWorkflow(workflow, repo, file) {
   return Object.entries(workflow.jobs ?? {}).map(([name, job]) => {
     const permissions = job.permissions ?? workflow.permissions;
     const steps = job.steps ?? [];
-    const checkouts = steps.filter((step) => typeof step.uses === "string" && step.uses.startsWith("actions/checkout@"))
+    // GitHub resolves the owner and repository in `uses:` ignoring case.
+    const checkouts = steps.filter((step) => typeof step.uses === "string" && step.uses.toLowerCase().startsWith("actions/checkout@"))
       .map((step) => step.with?.["persist-credentials"] === false || step.with?.["persist-credentials"] === "false" ? "no-persist" : "persist");
     // Inline shell can execute repository code; this is a candidate signal, not a verdict.
     const runsRepoCode = steps.some((step) => step.run !== undefined || step.uses?.startsWith("./"));
@@ -97,20 +98,13 @@ if (process.argv[1] && pathToFileURL(realpathSync(process.argv[1])).href === imp
     console.error("usage: audit.mjs <dir>");
     process.exitCode = 1;
   } else {
-    let yaml;
     try {
-      yaml = await loadYaml();
+      const yaml = await loadYaml();
+      console.log(auditDirectory(process.argv[2], yaml.parse));
     } catch (error) {
+      // Only a missing parser has a MODULE_NOT_FOUND cause; auditDirectory's errors carry YAML or file errors.
       console.error(error.message);
       process.exitCode = error.cause?.code === "MODULE_NOT_FOUND" ? 2 : 1;
-    }
-    if (yaml) {
-      try {
-        console.log(auditDirectory(process.argv[2], yaml.parse));
-      } catch (error) {
-        console.error(error.message);
-        process.exitCode = 1;
-      }
     }
   }
 }
