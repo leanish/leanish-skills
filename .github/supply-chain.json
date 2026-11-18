@@ -1,6 +1,6 @@
 {
   "npm": {
-    "lockfiles": [],
+    "lockfiles": ["package-lock.json"],
     "registries": ["https://registry.npmjs.org"]
   },
   "gradle": { "builds": [] },

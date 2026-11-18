@@ -16,6 +16,10 @@ try {
 } catch (error) {
   if (error.cause?.code !== "MODULE_NOT_FOUND") throw error;
 }
+// `npm test` (and CI) installs yaml, so there a missing parser fails instead of silently skipping half the tests.
+if (!yaml && process.env.npm_lifecycle_event === "test") {
+  throw new Error("yaml is required by npm test: run npm ci first");
+}
 const yamlOptions = { skip: yaml ? false : 'yaml is not resolvable; run with yaml installed in cwd or set NODE_PATH' };
 
 function fixture(t) {

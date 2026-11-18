@@ -1,0 +1,12 @@
+{
+  "name": "leanish-skills-checks",
+  "private": true,
+  "description": "Test dependencies for the skills' scripts; not part of any installed skill.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test skills/wip/four-eyes/scripts/four-eyes.test.mjs skills/wip/harden-workflows/scripts/audit.test.mjs skills/wip/harden-workflows/scripts/harden.test.mjs"
+  },
+  "devDependencies": {
+    "yaml": "2.9.1"
+  }
+}
