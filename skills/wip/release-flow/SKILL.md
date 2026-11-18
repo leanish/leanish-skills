@@ -54,6 +54,12 @@ on main through their own PR, then tag a new candidate and start again at step 1
 Run the final unprimed review on the last candidate, before the release PR,
 release tag and repins. Never defer it until after the release.
 
+On a project's first release there is no `v<deployed>`: wherever these steps compare
+with it, review the whole tree at the candidate instead (`git ls-tree -r --name-only
+v<rc>` to list it, `git show v<rc>:<file>` to read a file), and treat every finding
+as new for "What blocks". A later release's first candidate still compares with that
+release's predecessor.
+
 ## What blocks
 
 - Block only on findings new or worse than the deployed release: weakened
