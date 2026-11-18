@@ -12,7 +12,14 @@ description: >-
 # Release Flow
 
 Follow repo-specific release docs (for example, `docs/releasing.md`) for that
-repo's specifics. Use these defaults otherwise. This flow works in both agents.
+repo's specifics. Use these defaults otherwise. This flow works in both agents and
+on its own: each step says what its reviewers need. The four-eyes skill, when it's
+installed, adds the wrapper that calls Codex and the sub-agent setup; links to it
+point to more detail.
+
+Reviewers named below: **Sol** is Codex's everyday model and **Astra** its
+strongest (with four-eyes, the wrapper's default model and `--model astra`); the
+cheap reviewers are the cheapest model of the agent running the flow.
 
 ## Release candidates
 
@@ -29,20 +36,31 @@ every changed area and reports every finding, of any severity, in one reply,
 never stopping at the first blocker. Make all the fixes a candidate gets together
 on main through their own PR, then tag a new candidate and start again at step 1.
 
-1. **Cheap reviewers** (Haiku sub-agents in Claude Code). Run two read-only
-   reviewers in parallel on `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
-   Follow [four-eyes](../four-eyes/SKILL.md): a checklist reviewer checks each
-   changed behavior against fixed risky cases, with same/better/worse evidence;
-   a gap-hunter gets only the diff and "What does this break that worked before,
-   or let through?" Give the gap-hunter no checklist or implementation explanation.
+1. **Cheap reviewers.** Run two read-only reviewers in parallel on
+   `git diff v<deployed> v<rc>`. Use `git show v<deployed>:<file>` for comparison.
+   A checklist reviewer checks each changed behavior against these fixed risky cases,
+   marking each same, better or worse than the deployed release, with file/line or
+   test evidence: empty, missing, invalid and boundary inputs; errors and partial
+   failures; retries and duplicate operations; stale state, expiry and updates;
+   permissions and verification gates; output data and compatibility with existing
+   callers; and, for code that reads files or paths, links (to a file, a folder,
+   outside the tree, loops), case and Unicode variants, a folder where a file is
+   expected, `.`, `..` and empty segments, very large or looping inputs. A
+   gap-hunter gets only the diff and "What does this break that worked before, or
+   let through?" Give the gap-hunter no checklist or implementation explanation. In Claude Code they are Haiku sub-agents (the
+   [four-eyes](../four-eyes/SKILL.md) skill sets them up, when it's installed); in
+   Codex, the cheapest model as two sub-agents, or two passes of your own in fresh
+   contexts. This step needs nothing beyond what it says here.
 2. **Unprimed review.** Whoever didn't implement the last iteration reviews the
    whole state, in a fresh context (a new thread, label or sub-agent) that keeps
    it independent. An iteration is one round of implementation: what went into
    this candidate since the previous one or, on a first candidate, the last round
    of work before it. The reviewer is picked per iteration, not per PR or release:
-   if Claude implemented it, Sol reviews, and vice versa; if both did, both review
-   the whole state. Give only what to review, not where to look or what step 1 found.
-3. **Last review, by Astra.** Required, but it costs much more than Sol, so it runs
+   if Claude implemented it, Sol reviews (through four-eyes' wrapper, or Codex run
+   directly); if Codex did, Claude reviews; if both did, both review the whole state. Give only what to review, not where to look or what step 1 found.
+3. **Last review, by Astra.** Required: if Astra isn't available, this review stays
+   open, and a weaker model takes its place only with the user's OK. It costs much
+   more than Sol, so it runs
    only once every check on the candidate passed (real runs, CI, steps 1 and 2 found
    no blocker). It reads step 2's reviews, challenges those findings, looks for what
    was missed, and checks each finding against the deployed release. Continuing
