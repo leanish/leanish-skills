@@ -47,7 +47,7 @@ Our first-party skills, still being shaped. New leanish skills land here too.
   only: it delegates to Codex sub-agents running Luna.
 - [pr-description](./skills/wip/pr-description/SKILL.md) — the layout of a pull request's description (In short,
   Background, Problem, Solution, Tests, Notes for reviewers, Review history), which sections are always needed and
-  which only when they help. Works in any agent.
+  which only when they help. Works in any agent that supports `SKILL.md` skills.
 
 ### `third-party/` — vendored / external (not leanish-authored)
 
