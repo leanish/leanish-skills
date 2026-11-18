@@ -82,11 +82,14 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
 ## Calling Chatz
 
     # <absolute path to this skill> = the "Base directory for this skill:" path shown when this skill is invoked
+    # <scratch> = the absolute path of a directory only this session uses (its scratchpad, or one made once with
+    #   `mktemp -d`); write that path out everywhere, inside prompt files too: nothing expands it there
     SCRIPT=<absolute path to this skill>/scripts/four-eyes.mjs
-    node "$SCRIPT" <label> --prompt-file /tmp/msg.md      # or --message "..."
+    node "$SCRIPT" <label> --prompt-file "<scratch>/msg.md"      # or --message "..."
 
 - **One label per task, reused**: it holds Codex's thread, so send only what's new.
-  Open a second label only for separate work running in parallel.
+  Open a second label only for separate work running in parallel, or for a review
+  that must start fresh (see below).
 - **Sol** at high for everything. **Astra** to break a tie (see Settling), and
   **Astra** or **Luna** when the user or a skill asks for them: `--model astra|luna` (plus `--effort` if needed) on the
   same label, for one call. The user can override any model or effort.
@@ -108,11 +111,22 @@ reviewed patch) with tight self-checks; Claude reviews its whole diff as its own
   in a separate file. Ask Codex to write its findings before opening that file.
 - What you report (tests pass, a file says X) is a claim; Codex checks the
   important ones itself.
+- A review that must start fresh (unprimed or independent) needs a label no
+  earlier call used, since an existing label resumes its thread. Before the first
+  call, `node "$SCRIPT" --show <label>` must answer `no thread for label` (exit 1);
+  any other answer or error doesn't show the label is free, so pick another name,
+  or `--reset` it if its old thread can go. That's a check, not a reservation:
+  name the label after the task, and check that the first call's status line says
+  `action=start`; if it says `resume`, that review isn't fresh: redo it on a new
+  label.
 - Unless the user authorizes it, don't give Codex private data. Write the limits
   as an allowlist of paths it may read; naming private folders, even to forbid
-  them, leaks them. Ask it to pass the same limits to any sub-agent. Use public
-  sources or clearly labeled synthetic examples, and run sanitized reviews
-  outside private project directories: Codex starts in the calling directory.
+  them, leaks them. Ask it to pass the same limits to any sub-agent. The allowlist
+  is an instruction in the prompt; the wrapper doesn't enforce it (it sets only the
+  sandbox mode), so when reads must be confined, make the call where only what
+  Codex may read is reachable. Use public sources or clearly labeled synthetic
+  examples, and run sanitized reviews outside private project directories: Codex
+  starts in the calling directory.
 - Batch findings; no rounds just to say "ok". An agreed, concrete correction is its
   own plan. A narrow, unlikely edge case is fixed only if cheap; otherwise note it
   and move on. Wrong data shown to users always counts.
