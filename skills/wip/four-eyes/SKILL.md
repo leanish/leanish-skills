@@ -15,8 +15,8 @@ description: >-
 The goal is more certainty that what we do is right, from an agent outside
 Claude. The name comes from the four-eyes principle, but there are usually more
 eyes: cheap Haiku sub-agents for specific checks first, then one Sol review that
-carries the weight. Haiku goes first because it costs a fraction of Sol: what it
-catches doesn't cost a Sol round-trip, and Sol's review isn't spent on the obvious.
+carries the weight. Haiku goes first because it costs a fraction of Sol, and Sol
+settles its findings in the same review, without an extra round-trip.
 
 **Models**, always the newest version: **Sol**, **Astra** and **Luna** are Codex
 (OpenAI) model families; **Haiku** is Claude's cheapest model, run as Claude Code
@@ -27,15 +27,20 @@ sub-agents (not external). **Chatz** is Codex working as the second agent.
 1. **Plan.** The planner writes numbered items (claim, reason, worth doing: yes/no).
    The other side does its own pass, agrees or disagrees with reasons, and adds
    what's missing. Any logic change or design gets this review; only trivial or
-   mechanical edits skip it.
+   mechanical edits skip it. In the same call, the reviewer does the scope role of
+   [scrutinize](../scrutinize/SKILL.md), with its packet.
 2. **Implement** the agreed items.
-3. **Review.** The Haiku reviewers (below) look first; fix what's real. Then
-   whoever didn't implement reviews the diff, or before/after evidence for changes
-   outside Git.
+3. **Review.** The Haiku reviewers (below) run first. Then whoever didn't
+   implement reviews the diff with scrutinize's packet and correctness brief, or
+   before/after evidence for changes outside Git, and only then settles the Haiku
+   findings. If the diff adds a mechanism, area or requirement the plan didn't
+   have, it repeats the scope role.
 4. **Final check.** Before saying it's done, whoever didn't implement checks the
    end state against the original request: everything asked is done, the relevant
    checks ran, docs match, open points are listed. It can share a call with step 3
-   when both look at the same state; any later edit reopens it.
+   when both look at the same state; any later edit reopens it. Before merging a
+   PR, its current head needs a valid review; one of an earlier head counts only
+   if nothing relevant changed since.
 
 A review or a question with no change is step 1 alone: both look independently,
 settle, and tell the user where you agree and where you don't.
@@ -46,7 +51,11 @@ user asks for Codex.
 Settle each step before the next. Corrections and follow-ups, including later
 requests from the user, go through the same loop; if you changed something before
 Codex saw the plan, tell the user. At the end, tell the user what was done, what
-was skipped and why, and what is unresolved. Releases follow
+was skipped and why, and what is unresolved. Pre-existing problems a review found
+outside the change go there too: propose an issue per cause, with its evidence,
+unless one is already open, and let the user decide whether to open it. Anything
+exploitable stays out of public issues (see "Exploitable limitations" in
+release-flow). Releases follow
 [release-flow](../release-flow/SKILL.md).
 
 ## Roles
@@ -61,18 +70,26 @@ network, no commit or push, which checks to run, and a report of what it changed
 and tested. Both implementing, then Claude combining the two, is only on request
 (see [EXAMPLES.md](EXAMPLES.md)).
 
+When this flow calls scrutinize, it assigns these reviewers in place of
+scrutinize's defaults: the three Haiku reviewers (below), whoever didn't write
+the plan for scope, and whoever didn't implement for correctness, with no routine
+Astra pass. When Sol reviews,
+the task's own thread does it; when Claude does, it works from the context it has.
+Either way the report says the review had that context. This flow's steps and
+Settling decide corrections and further passes.
+
 ## Haiku reviewers
 
-Two read-only Haiku sub-agents review each change in parallel:
+Three read-only Haiku sub-agents review each change in parallel, before it's
+published (for a PR, before opening it): scrutinize's claims reviewer, checklist
+reviewer and gap-hunter, each with only the input scrutinize names. The claims
+reviewer checks the drafted PR text against the local check output, and runs
+again when either, or the code behind a claim, changes, or CI disagrees.
 
-- **Checklist reviewer:** each changed behavior against a fixed list of risky
-  cases (see EXAMPLES.md), marked same, better or worse than the base, with evidence.
-- **Gap-hunter:** only the diff and "What does this break that worked before, or
-  let through?" No checklist and no explanation, so it doesn't inherit the
-  implementer's blind spots.
-
-Claude judges their findings and reads the code only where a finding needs it.
-Start each one fresh, never as a fork, so it doesn't see this conversation.
+Whoever reviews correctness gets their findings only after writing its own, and
+confirms, rebuts or re-rates each with evidence. Claude resolves the dismissals
+that change the verdict and anything material still open, reading the code only
+where a finding needs it. Start each one fresh, never as a fork, so it doesn't see this conversation.
 Define them with `model: haiku` and `autoCompactWindow: 100000` in the
 sub-agent's frontmatter and keep their reads narrow: above about 100K tokens a
 prompt costs several times more, and compaction can't split one large read.
