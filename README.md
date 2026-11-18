@@ -45,6 +45,9 @@ Our first-party skills, still being shaped. New leanish skills land here too.
 - [frugality](./skills/wip/frugality/SKILL.md) — keep execution cost low: batch work, delegate to
   Luna only when that is cheaper overall, and verify with the smallest sufficient checks. Codex
   only: it delegates to Codex sub-agents running Luna.
+- [pr-description](./skills/wip/pr-description/SKILL.md) — the layout of a pull request's description (In short,
+  Background, Problem, Solution, Tests, Notes for reviewers, Review history), which sections are always needed and
+  which only when they help. Works in any agent that supports `SKILL.md` skills.
 
 ### `third-party/` — vendored / external (not leanish-authored)
 
