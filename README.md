@@ -37,6 +37,8 @@ Our first-party skills, still being shaped. New leanish skills land here too.
   Claude Code only: it calls Codex through its wrapper, so it needs Node.js and a working Codex CLI.
 - [release-flow](./skills/wip/release-flow/SKILL.md) — validate release candidates, finish release
   PRs, publish and repin adopters. Works in both Claude Code and Codex.
+- [scrutinize](./skills/wip/scrutinize/SKILL.md) — review a proposal or change for scope,
+  simplicity, factual claims, documentation and correctness. Returns findings and a verdict.
 - [harden-workflows](./skills/wip/harden-workflows/SKILL.md) — audit and harden GitHub Actions
   workflows to reduce what a dependency, plugin or action running in CI can do with the job's
   credentials: permissions per job, persisted checkout credentials, SHA pins, secrets, and publishing
