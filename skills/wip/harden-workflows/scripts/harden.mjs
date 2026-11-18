@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { lstatSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 
 function refuse(line, reason) {
@@ -140,6 +141,21 @@ export function harden(original, pins) {
   }).join("");
 }
 
+// Edits only a regular file inside the checkout it names: not a symbolic link, and, for a path under `.github/`, not
+// reached through a linked directory that leads out of that checkout. A clone's files come from its contributors.
+export function requireEditableFile(path) {
+  const absolute = resolve(path);
+  if (lstatSync(absolute).isSymbolicLink()) throw new Error("refusing to edit a symbolic link");
+  const real = realpathSync(absolute);
+  if (real !== resolve(realpathSync(dirname(absolute)), basename(absolute))) throw new Error("refusing to edit a symbolic link");
+  const marker = `${sep}.github${sep}`;
+  const at = absolute.lastIndexOf(marker);
+  if (at !== -1) {
+    const root = realpathSync(absolute.slice(0, at) || sep);
+    if (!real.startsWith(root + sep)) throw new Error("refusing to edit a file outside its checkout (reached through a symbolic link)");
+  }
+}
+
 if (process.argv[1] && pathToFileURL(realpathSync(process.argv[1])).href === import.meta.url) {
   const args = process.argv.slice(2);
   if (args[0] !== "--pins" || args.length < 3) {
@@ -151,6 +167,7 @@ if (process.argv[1] && pathToFileURL(realpathSync(process.argv[1])).href === imp
       validatePins(pins);
       for (const path of args.slice(2)) {
         try {
+          requireEditableFile(path);
           const original = readFileSync(path, "utf8");
           const result = harden(original, pins);
           if (result !== original) {

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -84,6 +84,36 @@ test("leaves unchanged files byte-for-byte and prints only changed paths", (t) =
   assert.equal(result.stdout, `changed ${changed}\n`);
   assert.ok(readFileSync(changed, "utf8").includes("persist-credentials: false"));
   assert.equal(readFileSync(untouched, "utf8"), original);
+});
+
+test("edits only regular files inside the checkout", (t) => {
+  const dir = fixture(t);
+  const pins = join(dir, "pins.json");
+  writeFileSync(pins, JSON.stringify(PINS));
+  const source = workflow("      - uses: actions/checkout@v7\n");
+  const outside = join(dir, "outside");
+  mkdirSync(outside);
+  writeFileSync(join(outside, "target.yml"), source);
+  const clone = join(dir, "clone");
+  mkdirSync(join(clone, ".github", "workflows"), { recursive: true });
+  writeFileSync(join(clone, ".github", "workflows", "ci.yml"), source);
+  symlinkSync(join(outside, "target.yml"), join(clone, ".github", "workflows", "linked.yml"));
+  const other = join(dir, "other");
+  mkdirSync(join(other, ".github"), { recursive: true });
+  symlinkSync(outside, join(other, ".github", "workflows"));
+  const run = (path) => spawnSync(process.execPath, [SCRIPT, "--pins", pins, path], { encoding: "utf8" });
+
+  const linkedFile = run(join(clone, ".github", "workflows", "linked.yml"));
+  assert.equal(linkedFile.status, 1);
+  assert.match(linkedFile.stderr, /symbolic link/);
+  const linkedDirectory = run(join(other, ".github", "workflows", "target.yml"));
+  assert.equal(linkedDirectory.status, 1);
+  assert.match(linkedDirectory.stderr, /outside its checkout/);
+  assert.equal(readFileSync(join(outside, "target.yml"), "utf8"), source);
+
+  const regular = run(join(clone, ".github", "workflows", "ci.yml"));
+  assert.equal(regular.status, 0, regular.stderr);
+  assert.ok(readFileSync(join(clone, ".github", "workflows", "ci.yml"), "utf8").includes("persist-credentials: false"));
 });
 
 const refusals = [
